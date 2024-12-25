@@ -75,7 +75,7 @@ class ListokController extends Controller
             ->join('tb_listok_rooms', 'tb_listok.id', '=', 'tb_listok_rooms.id_reg')
             ->join('tb_rooms', 'tb_listok_rooms.id_room', '=', 'tb_rooms.id')
             ->join('tb_room_types', 'tb_room_types.id', '=', 'tb_rooms.id_room_type')
-            ->where('tb_rooms.active', "1")
+            ->where('tb_rooms.active', "0")
             ->where('tb_rooms.id_hotel', 12)
             ->whereRaw('tb_listok.id_hotel = tb_listok_rooms.id_hotel')
             ->distinct()
@@ -104,6 +104,7 @@ class ListokController extends Controller
         $tag = $request->get('tag', '');
 
         $d = \DB::table('tb_listok')
+            ->leftjoin('tb_feedbacks', 'tb_feedbacks.pspNumber', '=', 'tb_listok.passportNumber')
             ->join('tb_passporttype', 'tb_listok.id_passporttype', '=', 'tb_passporttype.id')
             ->join('tb_guests', 'tb_listok.id_guest', '=', 'tb_guests.id')
             ->join('tb_visittype', 'tb_listok.id_visitType', '=', 'tb_visittype.id')
@@ -141,25 +142,31 @@ class ListokController extends Controller
                 tb_listok.datevisaoff AS tb_visato,
                 tb_listok.kppnumber,
                 tb_listok.datekpp,
+                tb_feedbacks.text,
+                tb_listok.id_citizen,
+                tb_listok.passportSerial,
+                tb_listok.passportNumber,
+                tb_listok.entry_by,
                 DATEDIFF(NOW(), tb_listok.datevisaoff) AS expired"
             )
             ->where(function($query) {
                 $query->whereNull('tb_listok.datevisitoff')
                       ->orWhereRaw('DATEDIFF(NOW(), tb_listok.datevisitoff) >= 0');
-            });
+            })
+            ->orderBy("tb_listok.id");
 
 
         if ($regNum) {
-            $d->where('tb_listok.regNum', '=', $regNum);
+            $d->where('tb_listok.regNum', 'LIKE', "$regNum%");
         }
 
         if ($room) {
-            $d->where('tb_listok.propiska', '=', $room);
-        }
-        if ($tag) {
-            $d->where('tb_listok.tag', '=', $tag);
+            $d->where('tb_listok.propiska', 'LIKE', "$room%");
         }
 
+        if ($tag) {
+            $d->where('tb_listok.tag', 'LIKE', "$tag%");
+        }
 
         return DataTables::of($d)
             ->editColumn('ctz', function ($row) {
@@ -639,26 +646,26 @@ class ListokController extends Controller
 
     public function moveToRoom(Request $request)
     {
-        $guestIds = $request->input('guest_ids'); 
-        $newRoom = $request->input('room_number'); 
-    
+        $guestIds = $request->input('guest_ids');
+        $newRoom = $request->input('room_number');
+
         if (empty($guestIds) || !$newRoom) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Необходимо выбрать гостей и номер комнаты.'
             ]);
         }
-    
+
         \DB::table('tb_listok')
-            ->whereIn('id', $guestIds) 
+            ->whereIn('id', $guestIds)
             ->update(['propiska' => $newRoom]);
-    
+
         return response()->json([
             'status' => 'success',
             'message' => 'Гости успешно перемещены.'
         ]);
     }
-    
+
     public function statusPayment(Request $request)
     {
         $guestId = $request->input('guest_id');
@@ -677,21 +684,21 @@ class ListokController extends Controller
 
     public function updateTag(Request $request)
     {
-        $guestIds = $request->input('guest_ids'); 
-        $tag = $request->input('tag'); 
-    
+        $guestIds = $request->input('guest_ids');
+        $tag = $request->input('tag');
+
         if (empty($guestIds) || !$tag) {
             return response()->json([
                 'success' => false,
                 'message' => 'Необходимо выбрать гостей и указать тег.'
             ]);
         }
-    
+
         try {
             \DB::table('tb_listok')
-                ->whereIn('id', $guestIds) 
+                ->whereIn('id', $guestIds)
                 ->update(['tag' => $tag]);
-    
+
             return response()->json([
                 'success' => true,
                 'message' => 'Тег успешно обновлен.'
@@ -703,23 +710,23 @@ class ListokController extends Controller
             ]);
         }
     }
-    
+
 
     public function deleteTag(Request $request)
     {
         $guestIds = $request->input('guest_ids');
-    
+
         if (empty($guestIds)) {
             return response()->json(['success' => false, 'message' => 'Не выбраны гости для удаления тега.']);
         }
-    
+
         \DB::table('tb_listok')
             ->whereIn('id', $guestIds)
-            ->update(['tag' => '']); 
-    
+            ->update(['tag' => '']);
+
         return response()->json(['success' => true, 'message' => 'Теги успешно удалены.']);
     }
-    
+
 
     public function extendVisa(Request $request)
     {
@@ -739,4 +746,45 @@ class ListokController extends Controller
 
         return response()->json(['success' => true]);
     }
+
+    public function feedBack(Request $request)
+    {
+        $data = [
+            'id_citizen' => $request->id_citizen,
+            'pspSerial' => $request->passportSerial,
+            'pspNumber' => $request->passportNumber,
+            'text' => $request->feedback,
+            'inBlack' => ($request->blacklist === 'yes') ? 1 : 0,
+            'entry_by' => $request->entry_by,
+            'person_id' => $request->person_id,
+            'created_at' => now(),
+        ];
+    
+        $exists = \DB::table('tb_feedbacks')
+            ->where('id_citizen', $request->id_citizen)
+            ->where('pspSerial', $request->passportSerial)
+            ->where('pspNumber', $request->passportNumber)
+            ->exists();
+    
+        if ($exists) {
+            \DB::table('tb_feedbacks')
+                ->where('id_citizen', $request->id_citizen)
+                ->where('pspSerial', $request->passportSerial)
+                ->where('pspNumber', $request->passportNumber)
+                ->update($data);
+            
+            return response()->json(['success' => true, 'message' => 'Отзыв успешно обновлён!']);
+        } else {
+            \DB::table('tb_feedbacks')->insert($data);
+    
+            return response()->json(['success' => true, 'message' => 'Отзыв успешно добавлен!']);
+        }
+    }
+    
+    
+
+    
 }
+
+
+

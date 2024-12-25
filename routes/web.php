@@ -59,6 +59,8 @@ Route::post('/listok/status-payment', [ListokController::class, 'statusPayment']
 Route::post('/listok/tag', [ListokController::class, 'updateTag'])->name('update-tag');
 Route::post('/listok/delete-tag', [ListokController::class, 'deleteTag'])->name('delete-tag');
 Route::post('/listok/extend-visa', [ListokController::class, 'extendVisa'])->name('extend-visa');
+Route::post('/listok/feedback', [ListokController::class, 'feedBack'])->name('listok.feedback');
+
 
 
 Route::auto('listok', ListokController::class);
