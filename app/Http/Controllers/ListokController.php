@@ -55,9 +55,11 @@ class ListokController extends Controller
             ->get();
 
         $hotels = \DB::table('tb_hotels')->select(['id', 'name', 'id_region'])->get();
+        $regions = \DB::table('tb_region')->select(['id', 'name'])->get();
+        $ctzns = \DB::table('tb_citizens')->select(['id', 'SP_NAME04 as name'])->get();
 
 
-        return view('listok.index', $this->data, compact('rooms', 'hotels'));
+        return view('listok.index', $this->data, compact('rooms', 'hotels', 'regions', 'ctzns'));
     }
 
 
@@ -102,7 +104,7 @@ class ListokController extends Controller
         $regNum = $request->get('regNum', '');
         $room = $request->get('room', '');
         $tag = $request->get('tag', '');
-
+        
         $d = \DB::table('tb_listok')
             ->leftjoin('tb_feedbacks', 'tb_feedbacks.pspNumber', '=', 'tb_listok.passportNumber')
             ->join('tb_passporttype', 'tb_listok.id_passporttype', '=', 'tb_passporttype.id')
@@ -112,7 +114,7 @@ class ListokController extends Controller
             ->join('tb_citizens', 'tb_listok.id_citizen', '=', 'tb_citizens.id')
             ->leftJoin('tb_visa', 'tb_visa.id', '=', 'tb_listok.id_visa')
             ->join('tb_hotels', 'tb_users.id_hotel', '=', 'tb_hotels.id')
-            ->join('tb_region as rr', 'rr.id', '=', 'tb_hotels.id_region')
+            ->join('tb_region', 'tb_region.id', '=', 'tb_hotels.id_region')
             ->selectRaw(
                 "'' AS `empty`,
                 tb_listok.id,
@@ -123,8 +125,11 @@ class ListokController extends Controller
                 tb_listok.wdays,
                 tb_listok.payed,
                 tb_listok.tag,
+                tb_listok.surname,
+                tb_listok.firstname,
+                tb_users.last_name,
                 tb_hotels.name AS htl,
-                rr.name AS region,
+                tb_region.name AS region, 
                 DATE_FORMAT(tb_listok.dateVisitOn, '%d-%m-%Y %H:%i') AS dt,
                 tb_passporttype.name AS passportType,
                 tb_guests.guesttype,
@@ -155,7 +160,45 @@ class ListokController extends Controller
             })
             ->orderBy("tb_listok.id");
 
+        #Глобальный поиск
+        if ($request->filled('surname')) {
+            $d->where('tb_listok.surname', 'like', '%' . $request->surname . '%');
+        }
+        if ($request->filled('firstname')) {
+            $d->where('tb_listok.firstname', 'like', '%' . $request->firstname . '%');
+        }
+        if ($request->filled('lastname')) {
+            $d->where('tb_listok.lastname', 'like', '%' . $request->lastname . '%');
+        }
+        if ($request->filled('datebirth')) {
+            $d->whereDate('tb_listok.datebirth', '=', $request->datebirth);
+        }
+        if ($request->filled('citizenship')) {
+            $d->where('tb_listok.id_citizen', '=', $request->citizenship);
+        }
+        if ($request->filled('arrival_from') && $request->filled('arrival_to')) {
+            $d->whereBetween('tb_listok.dateVisitOn', [$request->arrival_from, $request->arrival_to])
+                  ->orWhereBetween('tb_listok.dateVisitOff', [$request->arrival_from, $request->arrival_to]);
+        }
+    
+        elseif ($request->filled('arrival_from')) {
+            $d->where('tb_listok.dateVisitOn', '>=', $request->arrival_from)
+                  ->orWhere('tb_listok.dateVisitOff', '>=', $request->arrival_from);
+        }
+        if ($request->filled('passport_number')) {
+            $d->whereRaw("CONCAT(tb_listok.passportSerial, tb_listok.passportNumber) = ?", [$request->passport_number]);
+        }
+        
+        if ($request->filled('region')) {
+            $d->where('tb_hotels.id_region', '=', $request->region);
+        }
+        if ($request->filled('hotel')) {
+            $d->where('tb_listok.id_hotel', '=', $request->hotel);
+        }
 
+
+
+        #Быстрый поиск
         if ($regNum) {
             $d->where('tb_listok.regNum', 'LIKE', "$regNum%");
         }
@@ -444,23 +487,7 @@ class ListokController extends Controller
 
 
                     $this->client->insert('tb_listok_checkout', [$checkoutData]);
-                    $logData = [
-                        'id' => (string) \Str::uuid(),
-                        'user_id' => auth()->id(),
-                        'user_name' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
-                        'hotel_id' => $tb_listok->id_hotel,
-                        'hotel_name' => $tb_listok->hotel_name ?? '',
-                        'data' => json_encode($checkoutData),
-                        'modul_id' => 2,
-                        'modul' => 'Checkout',
-                        'event' => 'User checked out',
-                        'ip_address' => request()->ip(),
-                        'created_at' => now()->format('Y-m-d H:i:s'),
-                        'dt' => now()->subDay()->format('Y-m-d'),
-                    ];
 
-                    \Log::info('LogData для LogUserActionJob', $logData);
-                    LogUserActionJob::dispatch($logData);
 
                     \DB::table('tb_listok_rooms')
                         ->where('id_reg', $tb_listok->id)
@@ -668,18 +695,28 @@ class ListokController extends Controller
 
     public function statusPayment(Request $request)
     {
-        $guestId = $request->input('guest_id');
+        $guestIds = $request->input('guest_ids');
         $newpayment = $request->input('payment');
 
-        if (empty($guestId) || !$newpayment) {
+        if (empty($guestIds) || !$newpayment) {
             return response()->json(['status' => 'error', 'message' => 'Необходимо написать сумму!']);
         }
 
-        \DB::table('tb_listok')
-            ->where('id', $guestId)
+
+        try {
+            \DB::table('tb_listok')
+            ->whereIn('id', $guestIds)
             ->update(['amount' => $newpayment]);
 
-        return response()->json(['status' => 'success', 'message' => 'Успешно обновлено!.']);
+            return response()->json(['status' => 'success', 'message' => 'Успешно обновлено!.']);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при обновлении amount: ' . $e->getMessage()
+            ]);
+        }
+
+
     }
 
     public function updateTag(Request $request)
@@ -759,31 +796,27 @@ class ListokController extends Controller
             'person_id' => $request->person_id,
             'created_at' => now(),
         ];
-    
+
         $exists = \DB::table('tb_feedbacks')
             ->where('id_citizen', $request->id_citizen)
             ->where('pspSerial', $request->passportSerial)
             ->where('pspNumber', $request->passportNumber)
             ->exists();
-    
+
         if ($exists) {
             \DB::table('tb_feedbacks')
                 ->where('id_citizen', $request->id_citizen)
                 ->where('pspSerial', $request->passportSerial)
                 ->where('pspNumber', $request->passportNumber)
                 ->update($data);
-            
+
             return response()->json(['success' => true, 'message' => 'Отзыв успешно обновлён!']);
         } else {
             \DB::table('tb_feedbacks')->insert($data);
-    
+
             return response()->json(['success' => true, 'message' => 'Отзыв успешно добавлен!']);
         }
     }
-    
-    
-
-    
 }
 
 

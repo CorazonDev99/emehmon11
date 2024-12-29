@@ -23,6 +23,7 @@
                         <a href="#" class="dropdown-item"><i class="fas fa-hotel"></i> Гостиницы</a>
                         <a href="#" class="dropdown-item"><i class="fa fa-tasks"></i> Задачи</a>
                     </div>
+
                 </div>
             </li>
 
@@ -75,5 +76,11 @@
                 </a>
             </li>
         </ul>
+        <div class="d-flex">
+            <a href="/booking" class="btn btn-primary d-lg-block">
+                <i class="fas fa-book"></i>
+                БРОНИРОВАНИЕ
+            </a>
+        </div>
     </div>
 </nav>

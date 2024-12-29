@@ -367,7 +367,7 @@
                                     <i class="fa fa-filter"></i> Filters
                                 </button>
                             </div>
-
+                           
                             <!-- Collapsible Filter Inputs -->
                             <div class="collapse" id="filter-section">
                                 <div class="d-flex justify-content-between align-items-center mb-3 ">

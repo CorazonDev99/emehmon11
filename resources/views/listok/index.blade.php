@@ -9,7 +9,13 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/select/1.3.3/css/select.dataTables.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery-confirm@3.3.4/css/jquery-confirm.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.4/jquery-confirm.min.css">
-    <style>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/selectize@0.12.6/dist/css/selectize.default.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@eonasdan/tempus-dominus@6/build/css/tempus-dominus.css">
+        <style>
+        .container-fluid {
+            max-width: 100% !important;
+        }
+
         .line-confirm {
             background: #00a7d0;
         }
@@ -65,6 +71,7 @@
         }
 
         #room-index {
+
             z-index: 1;
         }
 
@@ -134,6 +141,15 @@
         }
     </style>
     <style>
+        .search-input {
+            margin-left: 20px !important;
+        }
+
+        .global-search {
+            margin-left: 100px !important;
+            margin-top: 15px !important
+        }
+
         #search-btn {
             margin-left: 20px !important
         }
@@ -196,6 +212,58 @@
             background-color: #f0f0f0;
         }
     </style>
+
+    <style>
+        #custom-loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            display: none;
+        }
+
+        /* Вращающийся индикатор */
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(0, 0, 0, 0.1);
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Затемнение фона таблицы */
+        .loading-overlay {
+            position: relative;
+        }
+
+        .loading-overlay:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            z-index: 999;
+            display: none;
+        }
+
+        .loading-overlay.loading:before {
+            display: block;
+        }
+    </style>
 @endsection
 
 
@@ -212,6 +280,8 @@
     <script src="{{ asset('assets/js/pages/sweet-alerts.init.js') }}"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.4/jquery-confirm.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/selectize@0.12.6/dist/js/standalone/selectize.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@eonasdan/tempus-dominus@6/build/js/tempus-dominus.js"></script>
 
     <script>
         var childrenData = @json($children);
@@ -229,6 +299,11 @@
                         d.regNum = $('#regNum-filter').val();
                         d.room = $('#room-filter').val();
                         d.tag = $('#tag-filter').val();
+
+                        let globalFilters = $('#global-search-form').serializeArray();
+                        globalFilters.forEach(function(filter) {
+                            d[filter.name] = filter.value;
+                        });
                     }
                 },
                 columns: [{
@@ -376,8 +451,19 @@
                     $('.dataTables_length').appendTo('.dataTables_wrapper');
                     $('.dataTables_info').appendTo('.dataTables_wrapper');
                 }
+
             });
-            $('#toggle-filter-btn').on('click', function() {
+            table.on('preXhr.dt', function() {
+                $('#listok-table-container').addClass('loading');
+                $('#custom-loading').fadeIn();
+            });
+
+            table.on('xhr.dt', function() {
+                $('#listok-table-container').removeClass('loading');
+                $('#custom-loading').fadeOut();
+            });
+
+            $('#toggle-fast-filter-btn').on('click', function() {
                 $('#filter-section').collapse('toggle');
             });
             $('#search-btn').on('click', function() {
@@ -391,6 +477,7 @@
         $('#deleteButton').on('click', function() {
             let table = $('#listok-table').DataTable();
             let selectedRows = table.rows('.selected').data();
+            console.log(selectedRows)
             if (selectedRows.length === 0) {
                 Swal.fire({
                     icon: 'warning',
@@ -414,7 +501,7 @@
                     selectedRows.each(function(row) {
                         ids.push(row.id);
                     });
-
+                    let bronNum = 0
                     $.ajax({
                         url: '/listok/destroy',
                         type: 'POST',
@@ -430,6 +517,7 @@
                                 timer: 1500
                             });
                             table.ajax.reload();
+                            bronNum += 1
                         },
                         error: function(error) {
                             Swal.fire({
@@ -952,49 +1040,49 @@
 
                 case 'info':
                     const modalHtml = `
-        <div class="modal fade" id="guestInfoModal" tabindex="-1" aria-labelledby="guestInfoModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header" style="background-color: white; color: white;">
-                        <h5 class="modal-title" id="guestInfoModalLabel">
-                            <i class="fa fa-suitcase" style="margin-right: 10px;"></i>
-                            Информация о ${rowData.guest}
-                        </h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <ul class="nav nav-tabs" id="guestInfoTabs" role="tablist">
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link active" id="info-tab" data-bs-toggle="tab" data-bs-target="#info" type="button" role="tab" aria-controls="info" aria-selected="true">
-                                    Информация
-                                </button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="reviews-tab" data-bs-toggle="tab" data-bs-target="#reviews" type="button" role="tab" aria-controls="reviews" aria-selected="false">
-                                    Отзывы
-                                </button>
-                            </li>
-                        </ul>
-                        <div class="tab-content mt-3">
-                            <div class="tab-pane fade show active" id="info" role="tabpanel" aria-labelledby="info-tab">
-                                <p><strong>Гражданство:</strong> ${rowData.ctz} -  ${rowData.ctzn}</p>
-                                <p><strong>В черном списке нашей гостиницы:</strong> <span class="badge bg-info">НЕТ</span></p>
-                                <p><strong>В глобальном черном списке:</strong> <span class="badge bg-info">НЕТ</span></p>
-                                <p><strong>Последняя активность в системе E-MEHMON:</strong> Нет данных.</p>
-                                <p><strong>Гость останавливался у нас:</strong> Этот гость у нас 1 раз.</p>
-                            </div>
-                            <div class="tab-pane fade" id="reviews" role="tabpanel" aria-labelledby="reviews-tab">
-                                ${rowData.text ? `<p>${rowData.text}</p>` : '<p>Нет отзывов.</p>'}
+                        <div class="modal fade" id="guestInfoModal" tabindex="-1" aria-labelledby="guestInfoModalLabel" aria-hidden="true">
+                            <div class="modal-dialog modal-lg">
+                                <div class="modal-content">
+                                    <div class="modal-header" style="background-color: white; color: white;">
+                                        <h5 class="modal-title" id="guestInfoModalLabel">
+                                            <i class="fa fa-suitcase" style="margin-right: 10px;"></i>
+                                            Информация о ${rowData.guest}
+                                        </h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <ul class="nav nav-tabs" id="guestInfoTabs" role="tablist">
+                                            <li class="nav-item" role="presentation">
+                                                <button class="nav-link active" id="info-tab" data-bs-toggle="tab" data-bs-target="#info" type="button" role="tab" aria-controls="info" aria-selected="true">
+                                                    Информация
+                                                </button>
+                                            </li>
+                                            <li class="nav-item" role="presentation">
+                                                <button class="nav-link" id="reviews-tab" data-bs-toggle="tab" data-bs-target="#reviews" type="button" role="tab" aria-controls="reviews" aria-selected="false">
+                                                    Отзывы
+                                                </button>
+                                            </li>
+                                        </ul>
+                                        <div class="tab-content mt-3">
+                                            <div class="tab-pane fade show active" id="info" role="tabpanel" aria-labelledby="info-tab">
+                                                <p><strong>Гражданство:</strong> ${rowData.ctz} -  ${rowData.ctzn}</p>
+                                                <p><strong>В черном списке нашей гостиницы:</strong> <span class="badge bg-info">НЕТ</span></p>
+                                                <p><strong>В глобальном черном списке:</strong> <span class="badge bg-info">НЕТ</span></p>
+                                                <p><strong>Последняя активность в системе E-MEHMON:</strong> Нет данных.</p>
+                                                <p><strong>Гость останавливался у нас:</strong> Этот гость у нас 1 раз.</p>
+                                            </div>
+                                            <div class="tab-pane fade" id="reviews" role="tabpanel" aria-labelledby="reviews-tab">
+                                                ${rowData.text ? `<p>${rowData.text}</p>` : '<p>Нет отзывов.</p>'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">ОК</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">ОК</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
+                                `;
 
                     $('body').append(modalHtml);
                     $('#guestInfoModal').modal('show');
@@ -1056,33 +1144,33 @@
                         title: 'Переместить в другой номер',
                         type: 'blue',
                         content: `
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Переместить в другой номер</h5>
-                    </div>
-                    <div class="modal-body">
-                        <div class="d-flex align-items-center">
-                            <i class="fa fa-check-circle" style="font-size: 48px; color: forestgreen; margin-right: 15px;"></i>
-                            <p>
-                                Выбрано <span class="badge bg-primary" id="selectedGuestsCount">${selectedGuests.length}</span> гостей.
-                                Вы можете перевести выбранных гостей в другой номер (комнату).
-                                Операция применяется ко всем выбранным гостям!
-                            </p>
-                        </div>
-                        <div class="mt-3">
-                            <label for="id_room">Номер / Комната:</label>
-                            <select id="id_room" name="id_room" class="select2 form-select" required>
-                                <option value="">--- НЕ ВЫБРАНО ---</option>
-                                @foreach ($rooms as $room)
-                                <option value="{{ $room->room_number }}">{{ $room->room_number }} - {{ $room->room_type }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `,
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Переместить в другой номер</h5>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="d-flex align-items-center">
+                                                <i class="fa fa-check-circle" style="font-size: 48px; color: forestgreen; margin-right: 15px;"></i>
+                                                <p>
+                                                    Выбрано <span class="badge bg-primary" id="selectedGuestsCount">${selectedGuests.length}</span> гостей.
+                                                    Вы можете перевести выбранных гостей в другой номер (комнату).
+                                                    Операция применяется ко всем выбранным гостям!
+                                                </p>
+                                            </div>
+                                            <div class="mt-3">
+                                                <label for="id_room">Номер / Комната:</label>
+                                                <select id="id_room" name="id_room" class="select2 form-select" required>
+                                                    <option value="">--- НЕ ВЫБРАНО ---</option>
+                                                    @foreach ($rooms as $room)
+                                                    <option value="{{ $room->room_number }}">{{ $room->room_number }} - {{ $room->room_type }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `,
                         buttons: {
                             confirm: {
                                 text: 'Переместить',
@@ -1128,65 +1216,65 @@
                         },
                     });
                     break;
-
-
                 case 'status':
+                    const selectedStatusRows = $('#listok-table').DataTable().rows({
+                        selected: true
+                    }).data();
                     $.confirm({
                         title: 'Статус оплаты',
                         type: 'blue',
                         content: `
-                                <div class="modal-dialog">
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h5 class="modal-title" id="paymentStatusModalLabel">Статус оплаты</h5>
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-body">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fa fa-check-circle" style="font-size: 48px; color: forestgreen; margin-right: 15px;"></i>
+                                            <p>
+                                                Выбрано <span class="badge bg-primary" id="selectedGuestsCount">${selectedStatusRows.length}</span> гостей.
+                                                Вы можете установить статус оплаты для выбранных гостей.
+                                                Операция применяется ко всем выбранным гостям!
+                                            </p>
                                         </div>
-                                        <div class="modal-body">
-                                            <div class="d-flex align-items-center">
-                                                <i class="fa fa-check-circle" style="font-size: 48px; color: forestgreen; margin-right: 15px;"></i>
-                                                <p>
-                                                    Выбрано <span class="badge bg-primary" id="selectedGuestsCount">1</span> гостей.
-                                                    Вы можете установить статус оплаты для выбранных гостей.
-                                                    Операция применяется ко всем выбранным гостям!
-                                                </p>
-                                            </div>
-                                            <div class="mt-3">
-                                                <label for="paymentStatus" class="form-label">Статус оплаты:</label>
-                                                <select id="paymentStatus" class="form-select">
-                                                    <option value="">--- Выберите статус ---</option>
-                                                    <option value="paid">Оплачено</option>
-                                                    <option value="pending">В ожидании</option>
-                                                    <option value="canceled">Отменено</option>
-                                                </select>
-                                            </div>
-                                            <div class="mt-3">
-                                                <label for="paymentAmount" class="form-label">Сумма UZS:</label>
-                                                <input type="text" id="paymentAmount" class="form-control" placeholder="ИТОГОВАЯ СУММА">
-                                            </div>
+                                        <div class="mt-3">
+                                            <label for="paymentStatus" class="form-label">Статус оплаты:</label>
+                                            <select id="paymentStatus" class="form-select">
+                                                <option value="">--- Выберите статус ---</option>
+                                                <option value="paid">Оплачено</option>
+                                                <option value="pending">В ожидании</option>
+                                                <option value="canceled">Отменено</option>
+                                            </select>
                                         </div>
-
+                                        <div class="mt-3">
+                                            <label for="paymentAmount" class="form-label">Сумма UZS:</label>
+                                            <input type="text" id="paymentAmount" class="form-control" placeholder="ИТОГОВАЯ СУММА">
+                                        </div>
                                     </div>
                                 </div>
-                            `,
+                            </div>
+                        `,
                         buttons: {
                             confirm: {
                                 text: 'Установить',
                                 action: function() {
-                                    const selectedGuest = rowData.id;
                                     const payment = $('#paymentAmount').val();
-
                                     if (!payment) {
-                                        $.alert('Пожалуйста, напишите сумму.');
+                                        $.alert('Пожалуйста, заполните все поля.');
                                         return false;
                                     }
+
+                                    const selectedIds = [];
+                                    selectedStatusRows.each(function(rowData) {
+                                        selectedIds.push(rowData.id);
+                                    });
+
                                     $.ajax({
                                         url: '/listok/status-payment',
                                         type: 'POST',
                                         data: {
                                             _token: '{{ csrf_token() }}',
-                                            guest_id: selectedGuest,
-                                            payment: payment
+                                            guest_ids: selectedIds,
+                                            payment: payment,
                                         },
-
                                         success: function(response) {
                                             if (response.status === 'success') {
                                                 Swal.fire({
@@ -1202,7 +1290,7 @@
                                             }
                                         },
                                         error: function() {
-                                            $.alert('Произошла ошибка при перемещении гостей.');
+                                            $.alert('Произошла ошибка при обновлении данных.');
                                         }
                                     });
                                 }
@@ -1210,10 +1298,10 @@
                             cancel: {
                                 text: 'Отмена'
                             }
-                        },
-
+                        }
                     });
                     break;
+
 
 
                 case 'print':
@@ -1443,7 +1531,7 @@
 
                     $.confirm({
                         title: 'Добавить Отзыв',
-                        type:"blue",
+                        type: "blue",
                         content: `
                             <p style="margin-left:20px;">${feedbackdata.ctz} ${feedbackdata.guest}</p>
                             <textarea class="form-control" id="feedbackText" rows="4" placeholder="Введите отзыв"></textarea>
@@ -1512,8 +1600,7 @@
                                     });
                                 }
                             },
-                            ОТМЕНА: function() {
-                            }
+                            ОТМЕНА: function() {}
                         }
                     });
                     break;
@@ -1764,7 +1851,7 @@
                     </ul>
                     <div class="tab-content">
                         <div class="tab-pane fade show active" id="info" role="tabpanel">
-                            <table class="table table-bordered" id="db-click-table">
+                            <table class="dataTable row-border compact hover" id="db-click-table">
                                 <tbody>
                                     <tr>
                                         <th>Рег. №</th>
@@ -1811,14 +1898,6 @@
                                         <td>${data.htl || 'Не указано'}</td>
                                     </tr>
                                     <tr>
-                                        <th>Место прописки</th>
-                                        <td>${data.propiska || 'Не указано'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Маршрут</th>
-                                        <td>${data.route || 'Не указано'}</td>
-                                    </tr>
-                                    <tr>
                                         <th>Зарегистрировал</th>
                                         <td>${data.adm || 'Не указано'}</td>
                                     </tr>
@@ -1831,7 +1910,7 @@
                         </div>
                         <!-- Вкладка "Доп. информация" -->
                         <div class="tab-pane fade" id="additional-info" role="tabpanel">
-                            <table class="table table-bordered">
+                            <table class="dataTable row-border compact hover">
                                 <tbody>
                                     <tr>
                                         <th>Тип документа</th>
@@ -1870,25 +1949,25 @@
                             ${
                                 Array.isArray(children) && children.length > 0
                                     ? `
-                                                                                                    <table class="table table-bordered">
-                                                                                                        <thead>
-                                                                                                            <tr>
-                                                                                                                <th>ФИО ребёнка</th>
-                                                                                                                <th>Дата рождения</th>
-                                                                                                                <th>Пол</th>
-                                                                                                            </tr>
-                                                                                                        </thead>
-                                                                                                        <tbody>
-                                                                                                            ${children.map(child => `
+                                                                                                            <table class="dataTable row-border compact hover">
+                                                                                                                <thead>
+                                                                                                                    <tr>
+                                                                                                                        <th>ФИО ребёнка</th>
+                                                                                                                        <th>Дата рождения</th>
+                                                                                                                        <th>Пол</th>
+                                                                                                                    </tr>
+                                                                                                                </thead>
+                                                                                                                <tbody>
+                                                                                                                    ${children.map(child => `
                                                     <tr>
                                                         <td>${child.child_name}</td>
                                                         <td>${formatDate(child.child_dateBirth)}</td>
                                                         <td>${child.child_gender === 'M' ? 'Мальчик' : 'Девушка'}</td>
                                                     </tr>
                                                 `).join('')}
-                                                                                                        </tbody>
-                                                                                                    </table>
-                                                                                                `
+                                                                                                                </tbody>
+                                                                                                            </table>
+                                                                                                        `
                                     : '<p>Нет информации о детях</p>'
                             }
                         </div>
@@ -1907,6 +1986,139 @@
             });
         });
     </script>
+
+    {{-- Global search --}}
+    <script>
+        $(document).ready(function() {
+            $('#toggle-filter-btn').on('click', function() {
+                $.confirm({
+                    title: 'Глобальный поиск',
+                    boxWidth: '800px',
+                    useBootstrap: false,
+                    type: "blue",
+                    content: "<div class='global-search'>" +
+                        "<form id='global-search-form'>" +
+                        "<div class='row align-items-center mb-3'>" +
+                        "<label class='col-md-3'>ФАМИЛИЯ:</label>" +
+                        "<div class='col-md-6 search-input'>" +
+                        "<input type='text' class='form-control' placeholder='ФАМИЛИЯ' name='surname'>" +
+                        "</div>" +
+                        "</div>" +
+
+                        "<div class='row align-items-center mb-3'>" +
+                        "<label class='col-md-3'>ИМЯ:</label>" +
+                        "<div class='col-md-6 search-input'>" +
+                        "<input type='text' class='form-control' placeholder='ИМЯ' name='firstname'>" +
+                        "</div>" +
+                        "</div>" +
+
+                        "<div class='row align-items-center mb-3'>" +
+                        "<label class='col-md-3'>ОТЧЕСТВО:</label>" +
+                        "<div class='col-md-6 search-input'>" +
+                        "<input type='text' class='form-control' placeholder='ОТЧЕСТВО' name='lastname'>" +
+                        "</div>" +
+                        "</div>" +
+
+                        "<div class='row align-items-center mb-3'>" +
+                        "<label class='col-md-3'>ДАТА РОЖДЕНИЯ:</label>" +
+                        "<div class='col-md-6 search-input'>" +
+                        "<input class='form-control' name='datebirth' value='' id='date-birth'>" +
+                        "<small id='birth-date-error' class='text-danger' style='display: none;'>Sana noto‘g‘ri kiritilgan!</small>" +
+                        "</div>" +
+                        "</div>" +
+
+                        "<div class='row align-items-center mb-3'>" +
+                        "<label class='col-md-3'>ГРАЖДАНСТВО:</label>" +
+                        "<div class='col-md-6 search-input'>" +
+                        "<select class='form-control' name='citizenship' id='citizenship'>" +
+                        "<option value=''>-- НЕ ВЫБРАНО --</option>" +
+                        "@foreach ($ctzns as $ctzn)" +
+                        "<option value='{{ $ctzn->id }}'>{{ $ctzn->name }}</option>" +
+                        "@endforeach" +
+                        "</select>" +
+                        "</div>" +
+                        "</div>" +
+
+                        "<div class='row align-items-center mb-3'>" +
+                        "<label class='col-md-3'>ПЕРИОД ПРИБЫТИЯ:</label>" +
+                        "<div class='col-md-6 search-input'>" +
+                        "<div class='d-flex'>" +
+                        "<input type='date' class='form-control me-2' name='arrival_from'>" +
+                        "<input type='date' class='form-control' name='arrival_to'>" +
+                        "</div>" +
+                        "</div>" +
+                        "</div>" +
+
+                        "<div class='row align-items-center mb-3'>" +
+                        "<label class='col-md-3'>ПАСПОРТ СЕРИЯ №:</label>" +
+                        "<div class='col-md-6 search-input'>" +
+                        "<input type='text' class='form-control' placeholder='СЕРИЯ/НОМЕР' name='passport_number'>" +
+                        "</div>" +
+                        "</div>" +
+
+                        "<div class='row align-items-center mb-3'>" +
+                        "<label class='col-md-3'>РЕГИОН:</label>" +
+                        "<div class='col-md-6 search-input'>" +
+                        "<select class='form-control' name='region' id='region'>" +
+                        "<option value=''>-- НЕ ВЫБРАНО --</option>" +
+                        "@foreach ($regions as $region)" +
+                        "<option value='{{ $region->id }}'>{{ $region->name }}</option>" +
+                        "@endforeach" +
+                        "</select>" +
+                        "</div>" +
+                        "</div>" +
+
+                        "<div class='row align-items-center mb-3'>" +
+                        "<label class='col-md-3'>ГОСТИНИЦА:</label>" +
+                        "<div class='col-md-6 search-input'>" +
+                        "<select class='form-control' name='hotel' id='hotel'>" +
+                        "<option value=''>-- НЕ ВЫБРАНО --</option>" +
+                        "@foreach ($hotels as $hotel)" +
+                        "<option value='{{ $hotel->id }}'>{{ $hotel->name }}</option>" +
+                        "@endforeach" +
+                        "</select>" +
+                        "</div>" +
+                        "</div>" +
+                        "</form>" +
+                        "</div>",
+                    buttons: {
+                        Поиск: {
+                            btnClass: 'btn-blue',
+                            action: function() {
+                                $('#listok-table').DataTable().ajax.reload(null, false);
+                            },
+                        },
+                        Отмена: function() {},
+                    },
+                    onContentReady: function() {
+                        new tempusDominus.TempusDominus(document.getElementById('date-birth-picker'), {
+                            display: {
+                                viewMode: 'calendar', // Показываем только календарь
+                                components: {
+                                    decades: false,
+                                    year: true,
+                                    month: true,
+                                    date: true,
+                                    hours: false,
+                                    minutes: false,
+                                    seconds: false,
+                                },
+                            },
+                            restrictions: {
+                                maxDate: new Date(), // Запрещаем выбор будущих дат
+                            },
+                        });
+                        $('#citizenship, #region, #hotel').selectize({
+                            create: true,
+                            sortField: 'text',
+                            closeAfterSelect: true,
+                            highlight: true,
+                        });
+                    },
+                });
+            });
+        });
+    </script>
 @endsection
 
 @section('content')
@@ -1914,102 +2126,108 @@
         <div class="container-fluid">
             <div class="row">
                 <h4 class="listok_title">Листок прибытия</h4>
-                <div class="col-md-12 card-style">
-                    <div class="card" id="user">
-                        <div class="card-nav d-flex justify-content-between align-items-center">
-                            <div class="btn-group me-5" role="group" aria-label="Basic example">
-                                <div class="container mb-3">
-                                    <div class="col-md-12">
-                                        <a href="/listok/create" class="btn btn-outline-primary rounded me-2">
-                                            <i class="fas fa-plus"></i>
-                                        </a>
-                                        <button id="deleteButton" type="button" class="btn btn-outline-danger rounded">
-                                            <i class="fas fa-trash-alt"></i>
-                                        </button>
-
-                                        <button id="checkout" type="button" class="btn btn-outline-danger rounded">
-                                            <i class="fa fa-plane"></i>
-                                        </button>
-
-                                        <button type="button" class="btn btn-outline-info rounded" id="toggle-filter-btn">
-                                            <i class="fa fa-filter"></i>
-                                        </button>
-                                    </div>
-                                    <div class="collapse mt-3" id="filter-section">
-                                        <div class="p-3 border rounded bg-light shadow-sm">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <div class="d-flex flex-wrap gap-2">
-                                                    <input type="text" class="form-control" id="regNum-filter"
-                                                        placeholder="Рег. №" style="width: 150px;">
-                                                    <input type="text" class="form-control" id="room-filter"
-                                                        placeholder="Комната" style="width: 150px;">
-                                                    <input type="text" class="form-control" id="tag-filter"
-                                                        placeholder="Таг" style="width: 150px;">
-                                                </div>
-                                                <button type="button" class="btn btn-dark" id="search-btn">
-                                                    <i class="fa fa-search"></i>
-                                                </button>
+                <div class="card" id="user">
+                    <div class="card-nav d-flex justify-content-between align-items-center">
+                        <div class="btn-group me-5" role="group" aria-label="Basic example">
+                            <div class="container mb-3">
+                                <div class="col-md-12">
+                                    <button type="button" class="btn btn-info rounded" id="toggle-fast-filter-btn">
+                                        Быстрый Поиск
+                                    </button>
+                                </div>
+                                <div class="collapse mt-3" id="filter-section">
+                                    <div class="p-3 border rounded bg-light shadow-sm">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div class="d-flex flex-wrap gap-2">
+                                                <input type="text" class="form-control" id="regNum-filter"
+                                                    placeholder="Рег. №" style="width: 150px;">
+                                                <input type="text" class="form-control" id="room-filter"
+                                                    placeholder="Комната" style="width: 150px;">
+                                                <input type="text" class="form-control" id="tag-filter" placeholder="Таг"
+                                                    style="width: 150px;">
                                             </div>
+                                            <button type="button" class="btn btn-dark" id="search-btn">
+                                                <i class="fa fa-search"></i>
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
+
+                                <div class="col-md-12 mt-4">
+                                    <a href="/listok/create" class="btn btn-outline-primary rounded me-2">
+                                        <i class="fas fa-plus"></i>
+                                    </a>
+                                    <button id="deleteButton" type="button" class="btn btn-outline-danger rounded">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+
+                                    <button id="checkout" type="button" class="btn btn-outline-danger rounded">
+                                        <i class="fa fa-plane"></i>
+                                    </button>
+
+                                    <button type="button" class="btn btn-outline-info rounded" id="toggle-filter-btn">
+                                        <i class="fa fa-filter"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
+                    </div>
 
-                        <div id="context-menu">
-                            <ul style="list-style: none; padding: 10px; margin: 0;">
-                                <li><a href="#" class="menu-action" data-action="copy"><i id="icon-cont"
-                                            class="fas fa-copy"></i>Копировать (в буфер обмена)</a></li>
-                                <li><a href="#" class="menu-action" data-action="info"><i id="icon-cont"
-                                            class="fas fa-info-circle"></i>Сведения о госте</a></li>
-                                <li><a href="#" class="menu-action" data-action="checkout"><i id="icon-cont"
-                                            class="fas fa-plane"></i>CheckOut</a></li>
-                                <li><a href="#" class="menu-action" data-action="move"><i id="icon-cont"
-                                            class="fas fa-network-wired"></i>Переместить в другой номер</a></li>
-                                <li><a href="#" class="menu-action" data-action="status"><i id="icon-cont"
-                                            class="fas fa-calculator"></i>Изменить статус оплаты</a></li>
-                                <li><a href="#" class="menu-action" data-action="feedback"><i id="icon-cont"
-                                            class="fas fa-comment-dots"></i>Добавить отзыв</a></li>
-                                <li><a href="#" class="menu-action" data-action="print"><i id="icon-cont"
-                                            class="fas fa-print"></i>Печать листка прибытия</a></li>
-                                <li><a href="#" class="menu-action" data-action="tag"><i id="icon-cont"
-                                            class="fas fa-tag"></i>Присвоить тег</a></li>
-                                <li><a href="#" class="menu-action" data-action="delete-tag"><i id="icon-cont"
-                                            class="fas fa-times"></i>Удалить тег</a></li>
-                                <li><a href="#" class="menu-action" data-action="extend-visa"><i id="icon-cont"
-                                            class="fas fa-id-card"></i>Продлить визу</a></li>
-                            </ul>
+                    <div id="context-menu">
+                        <ul style="list-style: none; padding: 10px; margin: 0;">
+                            <li><a href="#" class="menu-action" data-action="copy"><i id="icon-cont"
+                                        class="fas fa-copy"></i>Копировать (в буфер обмена)</a></li>
+                            <li><a href="#" class="menu-action" data-action="info"><i id="icon-cont"
+                                        class="fas fa-info-circle"></i>Сведения о госте</a></li>
+                            <li><a href="#" class="menu-action" data-action="checkout"><i id="icon-cont"
+                                        class="fas fa-plane"></i>CheckOut</a></li>
+                            <li><a href="#" class="menu-action" data-action="move"><i id="icon-cont"
+                                        class="fas fa-network-wired"></i>Переместить в другой номер</a></li>
+                            <li><a href="#" class="menu-action" data-action="status"><i id="icon-cont"
+                                        class="fas fa-calculator"></i>Изменить статус оплаты</a></li>
+                            <li><a href="#" class="menu-action" data-action="feedback"><i id="icon-cont"
+                                        class="fas fa-comment-dots"></i>Добавить отзыв</a></li>
+                            <li><a href="#" class="menu-action" data-action="print"><i id="icon-cont"
+                                        class="fas fa-print"></i>Печать листка прибытия</a></li>
+                            <li><a href="#" class="menu-action" data-action="tag"><i id="icon-cont"
+                                        class="fas fa-tag"></i>Присвоить тег</a></li>
+                            <li><a href="#" class="menu-action" data-action="delete-tag"><i id="icon-cont"
+                                        class="fas fa-times"></i>Удалить тег</a></li>
+                            <li><a href="#" class="menu-action" data-action="extend-visa"><i id="icon-cont"
+                                        class="fas fa-id-card"></i>Продлить визу</a></li>
+                        </ul>
+                    </div>
+
+                    <div id="listok-table-container" class="loading-overlay">
+                        <div id="custom-loading">
+                            <div class="spinner"></div>
                         </div>
-
-
-                        <div class="card-body">
-                            <table class="table" id="listok-table" style="width: 100%">
-                                <thead>
-                                    <tr>
-                                        <th></th>
-                                        <th class="non_searchable">ID</th>
-                                        <th style="white-space: nowrap;">РЕГ.№</th>
-                                        <th>Ф.И.О ГОСТЯ</th>
-                                        <th class="non_searchable">ГРАЖД.</th>
-                                        <th>НОМЕР</th>
-                                        <th>ПРИБЫЛ</th>
-                                        <th>ПРИБЫЛ_НА</th>
-                                        <th>ГОСТИНИЦА</th>
-                                        <th>ОПЛАТА</th>
-                                        <th>ТЕГ</th>
-                                        <th>АДМИНИСТРАТОР</th>
-                                        <th>Д/Р</th>
-                                        <th>ВИЗА</th>
-                                        <th>ВИЗА №</th>
-                                        <th>ВИЗА С</th>
-                                        <th>ВИЗА ПО</th>
-                                        <th>КПП №</th>
-                                        <th>ДАТА КПП</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
+                        <table class="table" id="listok-table" style="width: 100%">
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th class="non_searchable">ID</th>
+                                    <th style="white-space: nowrap;">РЕГ.№</th>
+                                    <th>Ф.И.О ГОСТЯ</th>
+                                    <th class="non_searchable">ГРАЖД.</th>
+                                    <th>НОМЕР</th>
+                                    <th>ПРИБЫЛ</th>
+                                    <th>ПРИБЫЛ_НА</th>
+                                    <th>ГОСТИНИЦА</th>
+                                    <th>ОПЛАТА</th>
+                                    <th>ТЕГ</th>
+                                    <th>АДМИНИСТРАТОР</th>
+                                    <th>Д/Р</th>
+                                    <th>ВИЗА</th>
+                                    <th>ВИЗА №</th>
+                                    <th>ВИЗА С</th>
+                                    <th>ВИЗА ПО</th>
+                                    <th>КПП №</th>
+                                    <th>ДАТА КПП</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
                     </div>
                 </div>
             </div>

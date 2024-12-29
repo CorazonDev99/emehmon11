@@ -16,6 +16,9 @@ use App\Http\Controllers\Settings\HotelImagesController;
 use App\Http\Controllers\Settings\RoomcleanersController;
 use App\Http\Controllers\Settings\RoompricesController;
 use App\Models\User;
+use App\Http\Controllers\BookingController;
+use App\Http\Controllers\EditBookingController;
+use App\Http\Controllers\InfoBookingController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -62,14 +65,29 @@ Route::post('/listok/extend-visa', [ListokController::class, 'extendVisa'])->nam
 Route::post('/listok/feedback', [ListokController::class, 'feedBack'])->name('listok.feedback');
 
 
+Route::auto('booking', BookingController::class);
+Route::auto('editbooking', EditBookingController::class);
+Route::auto('infobooking', InfoBookingController::class);
+
 
 Route::auto('listok', ListokController::class);
-
 Route::auto('rooms', RoomController::class);
 Route::resources([
+    'booking' => BookingController::class,
+    'editbooking' => EditBookingController::class,
+    'infobooking' => InfoBookingController::class,
     'listok' => ListokController::class,
     'rooms' => RoomController::class,
 ]);
+
+Route::get('/booking', function () {
+    return view('booking');
+})->middleware('auth');
+Route::get('/booking/book-table',[BookingController::class,'getBookTable'])->name('book-table');
+Route::post('/book/book-guest', [BookingController::class, 'bookGuest'])->name('booking.bookGuest');
+Route::get('/booking/update-booking',[BookingController::class,'updateBooking'])->name('update-booking');
+Route::post('/booking/info-update-booking',[InfoBookingController::class, 'updateBooking'])->name('info-update-booking');
+
 
 Route::group(['prefix' => 'settings', 'middleware' => 'auth'], function () {
     Route::auto('/roomprices', RoompricesController::class);
