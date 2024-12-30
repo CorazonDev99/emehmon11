@@ -87,6 +87,21 @@ class ListokController extends Controller
     }
 
 
+    public function show()
+    {
+        $rooms = \DB::table('tb_listok')
+            ->join('tb_listok_rooms', 'tb_listok.id', '=', 'tb_listok_rooms.id_reg')
+            ->join('tb_rooms', 'tb_listok_rooms.id_room', '=', 'tb_rooms.id')
+            ->join('tb_room_types', 'tb_room_types.id', '=', 'tb_rooms.id_room_type')
+            ->where('tb_rooms.active', "0")
+            ->where('tb_rooms.id_hotel', 12)
+            ->whereRaw('tb_listok.id_hotel = tb_listok_rooms.id_hotel')
+            ->distinct()
+            ->select('tb_rooms.id as room_id', 'tb_rooms.room_numb as room_number', 'tb_room_types.ru as room_type')
+            ->get();
+        return view('listok.show', compact('rooms'));
+    }
+
 
     public function datarow(Request $request)
     {
@@ -104,7 +119,7 @@ class ListokController extends Controller
         $regNum = $request->get('regNum', '');
         $room = $request->get('room', '');
         $tag = $request->get('tag', '');
-        
+
         $d = \DB::table('tb_listok')
             ->leftjoin('tb_feedbacks', 'tb_feedbacks.pspNumber', '=', 'tb_listok.passportNumber')
             ->join('tb_passporttype', 'tb_listok.id_passporttype', '=', 'tb_passporttype.id')
@@ -129,7 +144,7 @@ class ListokController extends Controller
                 tb_listok.firstname,
                 tb_users.last_name,
                 tb_hotels.name AS htl,
-                tb_region.name AS region, 
+                tb_region.name AS region,
                 DATE_FORMAT(tb_listok.dateVisitOn, '%d-%m-%Y %H:%i') AS dt,
                 tb_passporttype.name AS passportType,
                 tb_guests.guesttype,
@@ -180,7 +195,7 @@ class ListokController extends Controller
             $d->whereBetween('tb_listok.dateVisitOn', [$request->arrival_from, $request->arrival_to])
                   ->orWhereBetween('tb_listok.dateVisitOff', [$request->arrival_from, $request->arrival_to]);
         }
-    
+
         elseif ($request->filled('arrival_from')) {
             $d->where('tb_listok.dateVisitOn', '>=', $request->arrival_from)
                   ->orWhere('tb_listok.dateVisitOff', '>=', $request->arrival_from);
@@ -188,7 +203,7 @@ class ListokController extends Controller
         if ($request->filled('passport_number')) {
             $d->whereRaw("CONCAT(tb_listok.passportSerial, tb_listok.passportNumber) = ?", [$request->passport_number]);
         }
-        
+
         if ($request->filled('region')) {
             $d->where('tb_hotels.id_region', '=', $request->region);
         }

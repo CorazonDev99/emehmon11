@@ -269,6 +269,7 @@
 
 @section('script')
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{{ asset('assets/libs/inputmask/inputmask.min.js') }}"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery-confirm@3.3.4/js/jquery-confirm.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js" type="text/javascript"></script>
@@ -281,7 +282,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.4/jquery-confirm.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/selectize@0.12.6/dist/js/standalone/selectize.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@eonasdan/tempus-dominus@6/build/js/tempus-dominus.js"></script>
 
     <script>
         var childrenData = @json($children);
@@ -1851,7 +1851,7 @@
                     </ul>
                     <div class="tab-content">
                         <div class="tab-pane fade show active" id="info" role="tabpanel">
-                            <table class="dataTable row-border compact hover" id="db-click-table">
+                            <table class="table dataTable row-border compact table-hover" id="db-click-table">
                                 <tbody>
                                     <tr>
                                         <th>Рег. №</th>
@@ -1910,7 +1910,7 @@
                         </div>
                         <!-- Вкладка "Доп. информация" -->
                         <div class="tab-pane fade" id="additional-info" role="tabpanel">
-                            <table class="dataTable row-border compact hover">
+                            <table class="table dataTable row-border compact table-hover">
                                 <tbody>
                                     <tr>
                                         <th>Тип документа</th>
@@ -1949,7 +1949,7 @@
                             ${
                                 Array.isArray(children) && children.length > 0
                                     ? `
-                                                                                                            <table class="dataTable row-border compact hover">
+                                                                                                            <table class="table dataTable row-border compact table-hover">
                                                                                                                 <thead>
                                                                                                                     <tr>
                                                                                                                         <th>ФИО ребёнка</th>
@@ -2022,7 +2022,7 @@
                         "<div class='row align-items-center mb-3'>" +
                         "<label class='col-md-3'>ДАТА РОЖДЕНИЯ:</label>" +
                         "<div class='col-md-6 search-input'>" +
-                        "<input class='form-control' name='datebirth' value='' id='date-birth'>" +
+                        "<input type='date' class='form-control' name='datebirth' value='' id='date-birth'>" +
                         "<small id='birth-date-error' class='text-danger' style='display: none;'>Sana noto‘g‘ri kiritilgan!</small>" +
                         "</div>" +
                         "</div>" +
@@ -2091,23 +2091,7 @@
                         Отмена: function() {},
                     },
                     onContentReady: function() {
-                        new tempusDominus.TempusDominus(document.getElementById('date-birth-picker'), {
-                            display: {
-                                viewMode: 'calendar', // Показываем только календарь
-                                components: {
-                                    decades: false,
-                                    year: true,
-                                    month: true,
-                                    date: true,
-                                    hours: false,
-                                    minutes: false,
-                                    seconds: false,
-                                },
-                            },
-                            restrictions: {
-                                maxDate: new Date(), // Запрещаем выбор будущих дат
-                            },
-                        });
+
                         $('#citizenship, #region, #hotel').selectize({
                             create: true,
                             sortField: 'text',
@@ -2119,6 +2103,13 @@
             });
         });
     </script>
+
+    <script>
+    $(document).ready(function () {
+
+    });
+    </script>
+
 @endsection
 
 @section('content')
@@ -2202,7 +2193,7 @@
                         <div id="custom-loading">
                             <div class="spinner"></div>
                         </div>
-                        <table class="table" id="listok-table" style="width: 100%">
+                        <table class="table dataTable row-border table-hover" id="listok-table" style="width: 100%">
                             <thead>
                                 <tr>
                                     <th></th>

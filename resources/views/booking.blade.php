@@ -45,7 +45,6 @@
             $.confirm({
                 title: 'Guest registration in room ' + room_name + ' (' + type_name + ') for the period from ' + minDate + ' to ' + maxDate,
                 content:function (){
-                    var url = 'url:booking/form';
                     var params = {
                         minDate: minDate,
                         maxDate: maxDate,
@@ -53,7 +52,7 @@
                         room_name: room_name,
                         type_name: type_name
                     };
-                    return url+ '?' + $.param(params);
+                    return п6+ '?' + $.param(params);
                 },
                 type: 'blue',
                 columnClass: 'col-lg-12',
@@ -75,7 +74,7 @@
                                 success: function(response){
                                     if(response.status == 'success'){
                                         selected.removeClass('selected');
-                                        selected.addClass('listok');
+                                        selected.addClass(' listok');
                                         location.reload();
                                     }else{
                                         $.alert('Error');
