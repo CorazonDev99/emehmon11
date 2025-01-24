@@ -11,9 +11,21 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.4/jquery-confirm.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/selectize@0.12.6/dist/css/selectize.default.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@eonasdan/tempus-dominus@6/build/css/tempus-dominus.css">
-        <style>
-        .container-fluid {
-            max-width: 100% !important;
+    <style>
+        .admin{
+            background-color: #fff6ee;
+            padding: 10px;
+        }
+        #guestInfoTabs{
+            margin-top: 20px !important;
+            margin-left: 20px !important;
+        }
+        #reviews{
+            width: 100%;
+
+        }
+        .btb-feedback {
+            margin-left: 555px;
         }
 
         .line-confirm {
@@ -59,9 +71,7 @@
 
         }
 
-        #checkout {
-            margin-left: 8px !important;
-        }
+
 
         #details {
             margin-top: 20px;
@@ -103,7 +113,6 @@
 
         .card-nav {
             margin-top: 20px !important;
-            margin-left: 20px !important;
             margin-right: 20px !important;
         }
 
@@ -146,6 +155,7 @@
         }
 
         .global-search {
+            width: 85%;
             margin-left: 100px !important;
             margin-top: 15px !important
         }
@@ -154,16 +164,14 @@
             margin-left: 20px !important
         }
 
-        #toggle-filter-btn {
+
+        #db-click-table {
+            width: 98%;
             margin-left: 10px !important;
         }
 
-        #db-click-table {
-            margin-left: 30px !important;
-            width: 850px !important
-        }
-
         .tab-content {
+            width: 100% !important;
             margin-top: 25px !important
         }
 
@@ -282,9 +290,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.4/jquery-confirm.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/selectize@0.12.6/dist/js/standalone/selectize.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.3/xlsx.full.min.js"></script>
+
 
     <script>
         var childrenData = @json($children);
+        var feedbacks = @json($feedbacks);
+        var roomhistory = @json($room_history);
+        var bronroom = @json($bron_room);
     </script>
 
     {{-- Data Table and Filter --}}
@@ -322,8 +335,12 @@
                     },
                     {
                         data: 'regNum',
-                        name: 'tb_listok.regnum',
+                        name: 'tb_listok.regNum',
                         sClass: 'dt-center',
+                        render: function(data, type, row) {
+                            return `<a class="btn btn-sm btn-outline-primary p-1 text-bold open-menu-btn" data-id="${row.id}">${data}</a>`;
+                        }
+
                     },
                     {
                         data: 'guest',
@@ -344,7 +361,7 @@
                     },
                     {
                         data: 'dt',
-                        name: 'tb_listok.datevisiton',
+                        name: 'tb_listok.dateVisitOn',
                         sClass: 'dt-center',
 
                     },
@@ -392,31 +409,31 @@
                     },
                     {
                         data: 'tb_visanm',
-                        name: 'tb_listok.visanumber',
+                        name: 'tb_listok.visaNumber',
                         visible: false,
                         orderable: false,
                     },
                     {
                         data: 'tb_visafrom',
-                        name: 'tb_listok.datevisaon',
+                        name: 'tb_listok.dateVisaOn',
                         visible: false,
                         orderable: false,
                     },
                     {
                         data: 'tb_visato',
-                        name: 'tb_listok.datevisaoff',
+                        name: 'tb_listok.dateVisaOff',
                         visible: false,
                         orderable: false,
                     },
                     {
-                        data: 'kppnumber',
-                        name: 'tb_listok.kppnumber',
+                        data: 'kppNumber',
+                        name: 'tb_listok.kppNumber',
                         visible: false,
                         orderable: false,
                     },
                     {
-                        data: 'datekpp',
-                        name: 'tb_listok.datekpp',
+                        data: 'dateKPP',
+                        name: 'tb_listok.dateKPP',
                         visible: false,
                         orderable: false,
                     }
@@ -430,7 +447,7 @@
                 autoWidth: false,
                 scrollX: true,
                 order: [
-                    [0, 'desc']
+                    [0, 'asc']
                 ],
                 dom: 'rt<"bottom"ilp><"clear">',
                 "language": {
@@ -467,9 +484,11 @@
                 $('#filter-section').collapse('toggle');
             });
             $('#search-btn').on('click', function() {
+                $('#global-search-form input').val('');
                 table.ajax.reload();
             });
         });
+
     </script>
 
     {{-- Кнопка удаление --}}
@@ -477,7 +496,6 @@
         $('#deleteButton').on('click', function() {
             let table = $('#listok-table').DataTable();
             let selectedRows = table.rows('.selected').data();
-            console.log(selectedRows)
             if (selectedRows.length === 0) {
                 Swal.fire({
                     icon: 'warning',
@@ -623,19 +641,30 @@
                     <td>${row.room}</td>
                     <td>${row.dt}</td>
                     <td>${row.wdays}</td>
-                    <td class="text-uppercase bold"><input class="form-control type="text" value="${row.payed}" style=";border-color: #2b95ff" required></td>
+                    <td class="text-uppercase bold"><input class="form-control" id="payment" type="text" value="${row.amount}" style=";border-color: #2b95ff" required></td>
                     <td>
-                        <select id="pay_tp" name="pay_tp" class="form-control paytp" title="Choose payment type" style=";border-color: #0090d9" required>
-                            <option value="" selected> ***** </option>
-                            <option value="2"> CASH (Наличные) </option>
-                            <option value="3"> HUMO CARD </option>
-                            <option value="4"> UZCARD </option>
-                            <option value="5"> CONTRACT (Договор) </option>
-                            <option value="1"> OTHER (Другое) </option>
+                       <select id="paytype" name="paytype" class="form-control paytp" title="Choose payment type" style="border-color: #0090d9" required>
+                            <option value="0" ${row.paytp === 0 ? 'selected' : ''}>*****</option>
+                            <option value="2" ${row.paytp === '2' ? 'selected' : ''}>CASH (Наличные)</option>
+                            <option value="3" ${row.paytp === '3' ? 'selected' : ''}>HUMO CARD</option>
+                            <option value="4" ${row.paytp === '4' ? 'selected' : ''}>UZCARD</option>
+                            <option value="5" ${row.paytp === '5' ? 'selected' : ''}>ПЕРЕЧИСЛЕНИЕ</option>
+                            <option value="6" ${row.paytp === '6' ? 'selected' : ''}>CONTRACT (Договор)</option>
+                            <option value="1" ${row.paytp === '1' ? 'selected' : ''}>OTHER (Другое)</option>
                         </select>
                     </td>
-                    <td class="text-uppercase bold"><input type="text" id="id_text" name="id_text" maxlength="400" class="form-control feedbackz" value="" placeholder="comments" style=";border-color: #2b95ff"/></td>
-                    <td style="vertical-align: middle!important; font-size: 0.8em!important;" class="text-center"><input type="checkbox" id="id_bl" name="id_bl" class="inblackz" title="Add to Black-List" style=";border-color: #ff0084"/></td>
+                    <td class="text-uppercase bold"><input type="text" id="comment" name="comment" maxlength="400" class="form-control feedbackz" value="" placeholder="comments" style=";border-color: #2b95ff"/></td>
+                    <td style="vertical-align: middle!important; font-size: 0.8em!important;" class="text-center">
+                        <input
+                            type="checkbox"
+                            id="inblack"
+                            name="inblack"
+                            class="inblackz"
+                            value="1"
+                            title="Add to Black-List"
+                            style="border-color: #ff0084"
+                        />
+                    </td>
                 </tr>
             `;
                 });
@@ -645,7 +674,7 @@
             </table>
             <div class="row col-md-12">
                     <div class="checkbox-container">
-                        <input type="checkbox" name="printAll" id="printAll" class="css-checkbox"/>
+                        <input type="checkbox" name="printAll" id="printAll" class="css-checkbox" checked/>
                         <label for="printAll" class="css-label">Распечатать листки убытия?</label>
                     </div>
 
@@ -673,6 +702,10 @@
                             btnClass: 'btn-green',
                             action: function() {
                                 let hasError = false;
+                                const payment = $('#payment').val().replace(/ /g, '');
+                                const paytype = $('#paytype').val();
+                                const comment = $('#comment').val();
+                                const inBlack = $('#inblack').prop('checked') ? 1 : 0;
 
                                 $('input[required], select[required], textarea[required]').each(
                                     function() {
@@ -691,76 +724,45 @@
                                 if ($('#printAll').is(':checked')) {
                                     let rowsPerPage = 2;
                                     let printContent = `
-                                    <!DOCTYPE html>
-                                    <html lang="ru">
-                                    <head>
-                                        <meta charset="UTF-8">
-                                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                                        <style>
-                                            body {
-                                                font-family: Arial, sans-serif;
-                                                margin: 0;
-                                                padding: 0;
-                                            }
-                                            .qrcode{
-                                            margin-left: 50px !important;
-                                                }
-                                            .page {
-                                                width: 100%;
-                                                margin: 0 auto;
-                                                padding: 20px;
-                                                box-sizing: border-box;
-                                                page-break-after: always;
-                                            }
-                                            .header {
-                                                display: flex;
-                                                justify-content: space-between;
-                                                align-items: center;
-                                                margin-bottom: 20px;
-                                            }
-                                            .header img {
-                                                height: 50px;
-                                            }
-                                            .header .hotel-info {
-                                                flex: 1;
-                                                margin-left: 60px !important;
-                                            }
-                                            .header .qr-code {
-                                                text-align: right;
-                                            }
-                                            .qr-code img {
-                                                width: 80px;
-                                                height: 80px;
-                                            }
-                                            table {
+                                         <!DOCTYPE html>
+                                        <html lang="ru">
+                                        <head>
+                                            <meta charset="UTF-8">
+                                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                                            <style>
+                                             table {
+                                                margin-top:10px !important;
                                                 width: 100%;
                                                 border-collapse: collapse;
-                                                margin-top: 10px;
+                                                table-layout: fixed;
                                             }
+                                            .qrcode{
+                                                margin-top:10px !important;
+                                                margin-left: 27px !important;
+                                                }
+
                                             table, th, td {
+
                                                 border: 1px solid #000;
                                             }
-                                            th {
+
+                                            th, td {
+                                                padding: 5px;
                                                 text-align: left;
-                                                padding: 5px;
-                                                background-color: #f9f9f9;
+                                                height: 15px;
+                                                vertical-align: middle; /* Выравнивание содержимого по центру */
                                             }
-                                            td {
-                                                padding: 5px;
-                                            }
-                                            .children-table th, .children-table td {
-                                                text-align: center;
-                                            }
-                                            .children-table {
-                                                margin-top: 10px;
-                                            }
-                                            .footer {
-                                                margin-top: 20px;
-                                            }
-                                        </style>
-                                    </head>
-                                    <body>
-                                `;
+
+                                            /* Установка фиксированной ширины для каждой колонки */
+                                            th:nth-child(1), td:nth-child(1) { width: 30%; } /* Первая колонка */
+                                            th:nth-child(2), td:nth-child(2) { width: 50%; } /* Вторая колонка */
+                                            th:nth-child(3), td:nth-child(3) { width: 20%;} /* Третья колонка */
+
+                                            </style>
+
+                                        </head>
+                                        <body>
+                                    `;
 
                                     let currentCount = 0;
                                     $.each(selectedRows, function(index, row) {
@@ -772,81 +774,80 @@
                                         const firstName = fullname[1] || '';
                                         const surname = fullname[2] || '';
                                         printContent += `
-                                        <table id="childrenTable" style="width: 100%; border: 1px solid black; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px;">
-                                            <tr>
-                                                <td colspan="1" style="border: 1px solid black; text-align: center; padding: 5px;">
-                                                    <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="height: 50px;">
-                                                </td>
-                                                <td colspan="2" style="border: 1px solid black; text-align: center; padding: 5px;">
-                                                    <strong>Гостиница:</strong> ${row.htl || ''}<br>
-                                                    <strong>Регион:</strong> ${row.region || ''}<br>
-                                                    <strong>Адрес:</strong> ${row.tag || ''}<br>
-                                                    <strong>№ ком.:</strong> ${row.room || ''}
-                                                </td>
-                                                <td colspan="1" style="border: 1px solid black; text-align: center; padding: 5px;">
-                                                    <div class="qrcode" id="qrcode-${row.regnum}"></div>
-                                                    <p>${row.regnum || ''}</p>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="border: 1px solid black; padding: 5px;"><strong>1. ФАМИЛИЯ:</strong></td>
-                                                <td colspan="4" style="border: 1px solid black; padding: 5px;">${lastName || ''}</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="border: 1px solid black; padding: 5px;"><strong>2. ИМЯ:</strong></td>
-                                                <td colspan="4" style="border: 1px solid black; padding: 5px;">${firstName || ''}</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="border: 1px solid black; padding: 5px;"><strong>3. ОТЧЕСТВО:</strong></td>
-                                                <td colspan="4" style="border: 1px solid black; padding: 5px;">${surname || ''}</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="border: 1px solid black; padding: 5px;"><strong>4. ДАТА РОЖДЕНИЯ:</strong></td>
-                                                <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.datebirth || ''}</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="border: 1px solid black; padding: 5px;"><strong>5. ГРАЖДАНСТВО:</strong></td>
-                                                <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.ctzn || ''}</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="border: 1px solid black; padding: 5px;"><strong>6. ДОКУМЕНТ:</strong></td>
-                                                <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.document || ''}</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="border: 1px solid black; padding: 5px;"><strong>7. ВИЗА:</strong></td>
-                                                <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.visa || ''}</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="border: 1px solid black; padding: 5px;"><strong>8. ОТКУДА ПРИБЫЛ:</strong></td>
-                                                <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.arrival || ''}</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="border: 1px solid black; padding: 5px;"><strong>9. КПП:</strong></td>
-                                                <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.kppnumber || ''}</td>
-                                            </tr>
-                                            <tr>
-                                                <td colspan="5" style="border: 1px solid black; padding: 5px;"><strong>10. Вместе с ним/ней прибыли дети до 16 лет</strong></td>
-                                            </tr>
-                                            <tr>
-                                                <th style="border: 1px solid black; padding: 5px;"><strong>Имя</strong></th>
-                                                <th style="border: 1px solid black; padding: 5px;"><strong>Пол</strong></th>
-                                                <th colspan="3" style="border: 1px solid black; padding: 5px;"><strong>Дата рождения</strong></th>
-                                            </tr>
-
-                                            <tr>
-                                                <td style="border: 1px solid black; padding: 5px;"><strong>11. ДАТА ПРИБЫТИЯ:</strong></td>
-                                                <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.dateArrival || ''}</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="border: 1px solid black; padding: 5px;"><strong>12. ДАТА УБЫТИЯ:</strong></td>
-                                                <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.dateDeparture || ''}</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="border: 1px solid black; padding: 5px;"><strong>13. АДМИНИСТРАТОР:</strong></td>
-                                                <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.adm || ''}</td>
-                                            </tr>
-                                        </table>
-                                    `;
+            <table id="childrenTable" style="width: 100%; border: 1px solid black; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px;">
+                <tr>
+                    <td colspan="1" style="border: 1px solid black; text-align: center; padding: 5px;">
+                        <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="height: 50px;">
+                    </td>
+                    <td colspan="2" style="border: 1px solid black; text-align: center; padding: 5px;">
+                        <strong>Гостиница:</strong> ${row.htl || '&nbsp;'}<br>
+                        <strong>Регион:</strong> ${row.region || '&nbsp;'}<br>
+                        <strong>Адрес:</strong> ${row.tag || '&nbsp;'}<br>
+                        <strong>№ ком.:</strong> ${row.room || '&nbsp;'}
+                    </td>
+                    <td colspan="1" style="border: 1px solid black; text-align: center; padding: 5px;">
+                        <div class="qrcode" id="qrcode-${row.regNum}"></div>
+                        <p>${row.regNum || '&nbsp;'}</p>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black; padding: 5px;"><strong>1. ФАМИЛИЯ:</strong></td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${lastName || '&nbsp;'}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black; padding: 5px;"><strong>2. ИМЯ:</strong></td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${firstName || '&nbsp;'}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black; padding: 5px;"><strong>3. ОТЧЕСТВО:</strong></td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${surname || '&nbsp;'}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black; padding: 5px;"><strong>4. ДАТА РОЖДЕНИЯ:</strong></td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.datebirth || '&nbsp;'}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black; padding: 5px;"><strong>5. ГРАЖДАНСТВО:</strong></td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.ctzn || '&nbsp;'}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black; padding: 5px;"><strong>6. ДОКУМЕНТ:</strong></td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.document || '&nbsp;'}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black; padding: 5px;"><strong>7. ВИЗА:</strong></td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.visa || '&nbsp;'}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black; padding: 5px;"><strong>8. ОТКУДА ПРИБЫЛ:</strong></td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.arrival || '&nbsp;'}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black; padding: 5px;"><strong>9. КПП:</strong></td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.kppnumber || '&nbsp;'}</td>
+                </tr>
+                <tr>
+                    <td colspan="5" style="border: 1px solid black; padding: 5px;"><strong>10. Вместе с ним/ней прибыли дети до 16 лет</strong></td>
+                </tr>
+                <tr>
+                    <th style="border: 1px solid black; padding: 5px;"><strong>Имя</strong></th>
+                    <th style="border: 1px solid black; padding: 5px;"><strong>Пол</strong></th>
+                    <th colspan="3" style="border: 1px solid black; padding: 5px;"><strong>Дата рождения</strong></th>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black; padding: 5px;"><strong>11. ДАТА ПРИБЫТИЯ:</strong></td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.dateArrival || '&nbsp;'}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black; padding: 5px;"><strong>12. ДАТА УБЫТИЯ:</strong></td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.dateDeparture || '&nbsp;'}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black; padding: 5px;"><strong>13. АДМИНИСТРАТОР:</strong></td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.adm || '&nbsp;'}</td>
+                </tr>
+            </table>
+        `;
 
                                         currentCount++;
                                         if (currentCount === rowsPerPage) {
@@ -872,27 +873,27 @@
 
                                     iframe.onload = function() {
                                         $.each(selectedRows, function(index, row) {
-                                            new QRCode(iframe.contentWindow.document
-                                                .getElementById(
-                                                    `qrcode-${row.regnum}`), {
-                                                    text: row.regnum,
+                                            const url = `https://example.com/guest/${row.regNum}`;
+                                            let qrElement = iframe.contentWindow.document.getElementById(`qrcode-${row.regNum}`);
+                                            if (qrElement) {
+                                                new QRCode(qrElement, {
+                                                    text: url,
                                                     width: 80,
                                                     height: 80
                                                 });
+                                            } else {
+                                                console.error(`Element qrcode-${row.regNum} not found`);
+                                            }
                                         });
 
                                         setTimeout(function() {
                                             let printWindow = iframe.contentWindow;
-
                                             printWindow.onafterprint = function() {
-                                                document.body.removeChild(
-                                                    iframe);
+                                                document.body.removeChild(iframe);
                                             };
-
                                             printWindow.focus();
                                             printWindow.print();
                                         }, 500);
-
                                     };
                                 }
                                 let ids = [];
@@ -905,12 +906,15 @@
                                     type: 'POST',
                                     data: {
                                         ids: ids,
+                                        payment:payment,
+                                        paytype:paytype,
+                                        comment:comment,
+                                        inblack:inBlack,
                                         _token: '{{ csrf_token() }}'
                                     },
                                     success: function(response) {
                                         if (response.status === 'success') {
-                                            $('#listok-table').DataTable().ajax
-                                                .reload();
+                                            $('#listok-table').DataTable().ajax.reload();
 
                                             Swal.fire({
                                                 icon: 'success',
@@ -943,6 +947,7 @@
     <script>
         $(document).ready(function() {
             var table = $('#listok-table').DataTable();
+
             $('#listok-table tbody').on('contextmenu', 'tr', function(e) {
 
                 e.preventDefault();
@@ -1016,132 +1021,118 @@
             }
             switch (action) {
                 case 'copy':
-                    $.confirm({
-                        title: 'Копирование',
-                        content: `Вы хотите скопировать данные для ${selectedRows.length} строк(и)?`,
-                        type: 'blue',
-                        buttons: {
-                            confirm: {
-                                text: 'Да',
-                                action: function() {
-                                    navigator.clipboard.writeText(textToCopy);
-                                    Swal.fire({
-                                        icon: 'success',
-                                        title: 'Данные скопированы!',
-                                    });
-                                }
-                            },
-                            cancel: {
-                                text: 'Нет'
-                            }
-                        }
+                    navigator.clipboard.writeText(textToCopy);
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Данные скопированы!',
                     });
                     break;
 
                 case 'info':
+                    var filteredFeedbacks = feedbacks.filter(feedback => feedback.pspNumber == rowData.passportNumber);
+                    const isInBlackList = filteredFeedbacks.some(feedback => feedback.inBlack === 1);
+
                     const modalHtml = `
-                        <div class="modal fade" id="guestInfoModal" tabindex="-1" aria-labelledby="guestInfoModalLabel" aria-hidden="true">
-                            <div class="modal-dialog modal-lg">
-                                <div class="modal-content">
-                                    <div class="modal-header" style="background-color: white; color: white;">
-                                        <h5 class="modal-title" id="guestInfoModalLabel">
-                                            <i class="fa fa-suitcase" style="margin-right: 10px;"></i>
-                                            Информация о ${rowData.guest}
-                                        </h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <ul class="nav nav-tabs" id="guestInfoTabs" role="tablist">
-                                            <li class="nav-item" role="presentation">
-                                                <button class="nav-link active" id="info-tab" data-bs-toggle="tab" data-bs-target="#info" type="button" role="tab" aria-controls="info" aria-selected="true">
-                                                    Информация
-                                                </button>
-                                            </li>
-                                            <li class="nav-item" role="presentation">
-                                                <button class="nav-link" id="reviews-tab" data-bs-toggle="tab" data-bs-target="#reviews" type="button" role="tab" aria-controls="reviews" aria-selected="false">
-                                                    Отзывы
-                                                </button>
-                                            </li>
-                                        </ul>
-                                        <div class="tab-content mt-3">
-                                            <div class="tab-pane fade show active" id="info" role="tabpanel" aria-labelledby="info-tab">
-                                                <p><strong>Гражданство:</strong> ${rowData.ctz} -  ${rowData.ctzn}</p>
-                                                <p><strong>В черном списке нашей гостиницы:</strong> <span class="badge bg-info">НЕТ</span></p>
-                                                <p><strong>В глобальном черном списке:</strong> <span class="badge bg-info">НЕТ</span></p>
-                                                <p><strong>Последняя активность в системе E-MEHMON:</strong> Нет данных.</p>
-                                                <p><strong>Гость останавливался у нас:</strong> Этот гость у нас 1 раз.</p>
-                                            </div>
-                                            <div class="tab-pane fade" id="reviews" role="tabpanel" aria-labelledby="reviews-tab">
-                                                ${rowData.text ? `<p>${rowData.text}</p>` : '<p>Нет отзывов.</p>'}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">ОК</button>
-                                    </div>
+                        <div class="nav nav-tabs" id="guestInfoTabs" role="tablist">
+                            <ul class="nav nav-tabs col-md-12">
+                                <li class="nav-item">
+                                    <a class="nav-link active" id="info-tab" data-tab="info" href="#" role="tab">Информация</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" id="reviews-tab" data-tab="reviews" href="#" role="tab">
+                                        Отзывы <span class="badge bg-primary">${filteredFeedbacks.length}</span>
+                                    </a>
+                                </li>
+                            </ul>
+                            <div class="tab-content mt-3">
+                                <div id="info" class="tab-pane active">
+                                    <p><strong>Гражданство:</strong> ${rowData.ctz} - ${rowData.ctzn}</p>
+                                    <p><strong>В черном списке нашей гостиницы:</strong>
+                                        <span class="badge bg-${isInBlackList ? 'danger' : 'info'}">
+                                            ${isInBlackList ? 'ДА' : 'НЕТ'}
+                                        </span>
+                                    </p>
+                                    <p><strong>В глобальном черном списке:</strong> <span class="badge bg-info">НЕТ</span></p>
+                                    <p><strong>Последняя активность в системе E-MEHMON:</strong> Нет данных.</p>
+                                    <p><strong>Гость останавливался у нас:</strong> Этот гость у нас 1 раз.</p>
+                                </div>
+                                <div id="reviews" class="tab-pane" style="display: none;">
+                                    <table class="table dataTable row-border compact table-hover">
+                                        <thead>
+                                            <tr class="text-center">
+                                                <th>Дата</th>
+                                                <th>Отзыв</th>
+                                                <th>Гостиница</th>
+                                                <th>Администратор</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${filteredFeedbacks.length > 0 ? filteredFeedbacks.map(feedback => `
+                                                <tr class="text-center">
+                                                    <td>${feedback.created_at || 'Не указано'}</td>
+                                                    <td>${feedback.text || 'Не указано'}</td>
+                                                    <td>${feedback.htl || 'Не указано'}</td>
+                                                    <td>${feedback.adm || 'Не указано'}</td>
+                                                </tr>
+                                            `).join('') : '<tr><td colspan="4" class="text-center">Отзывов нет</td></tr>'}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
                         </div>
-                                `;
+                    `;
 
-                    $('body').append(modalHtml);
-                    $('#guestInfoModal').modal('show');
-                    $('#guestInfoTabs button').each(function() {
-                        var tabTrigger = new bootstrap.Tab(this);
-                        $(this).on('click', function(e) {
-                            e.preventDefault();
-                            tabTrigger.show();
-                        });
-                    });
-                    $('#guestInfoModal').on('hidden.bs.modal', function() {
-                        $(this).remove();
-                    });
-                    break;
-
-
-                case 'checkout':
                     $.confirm({
-                        title: 'Check-Out',
+                        title: `<i class="fa fa-suitcase"></i> Информация о ${rowData.guest}`,
+                        content: modalHtml,
+                        boxWidth: '800px',
+                        useBootstrap: false,
                         type: 'blue',
-                        content: `Вы уверены, что хотите совершить Checkout для гостя: ${rowData.guest}?`,
                         buttons: {
-                            confirm: {
-                                text: 'Да',
-                                action: function() {
-                                    let table = $('#listok-table').DataTable();
-                                    let row = table.row(function(idx, data, node) {
-                                        return data.id === rowData.id;
-                                    });
-                                    if (row.node()) {
-                                        $(row.node()).addClass('selected');
-                                    } else {
-                                        console.warn(`Строка с ID ${rowData.id} не найдена.`);
-                                    }
-                                    $('#checkout').trigger('click');
-                                }
-
-                            },
-                            cancel: {
-                                text: 'Нет'
+                            ok: {
+                                text: 'ОТМЕНА',
+                                btnClass: 'btn-danger',
                             }
+                        },
+                        onOpen: function () {
+                            $('#guestInfoTabs .nav-link').on('click', function (e) {
+                                e.preventDefault();
+                                const targetTab = $(this).data('tab');
+                                $('#guestInfoTabs .tab-pane').hide();
+                                $(`#${targetTab}`).show();
+                                $('#guestInfoTabs .nav-link').removeClass('active');
+                                $(this).addClass('active');
+                            });
                         }
                     });
                     break;
 
+
+
+                case 'checkout':
+                    let table = $('#listok-table').DataTable();
+                    let row = table.row(function(idx, data, node) {
+                        return data.id === rowData.id;
+                    });
+                    if (row.node()) {
+                        $(row.node()).addClass('selected');
+                    } else {
+                        console.warn(`Строка с ID ${rowData.id} не найдена.`);
+                    }
+                    $('#checkout').trigger('click');
+                    break;
+
                 case 'move':
-                    const selectedRows = $('#listok-table').DataTable().rows({
+                    const selectedMoveRows = $('#listok-table').DataTable().rows({
                         selected: true
                     }).data();
-
-                    if (selectedRows.length === 0) {
-                        $.alert('Выберите хотя бы одного гостя для перемещения.');
-                        return;
-                    }
-
-                    const selectedGuests = Array.from(selectedRows, row => row.id);
-
+                    const selectedGuestsIds = Array.from(selectedMoveRows, row => row.id);
+                    const selectedHtlIds = Array.from(selectedMoveRows, row => row.id_hotel);
+                    const selectedAdmIds = Array.from(selectedMoveRows, row => row.entry_by);
+                    const selectedGuests = Array.from(selectedMoveRows, row => row.guest);
+                    const selectedOldRoomNums = Array.from(selectedMoveRows, row => row.room)
                     $.confirm({
-                        title: 'Переместить в другой номер',
+                        title: '',
                         type: 'blue',
                         content: `
                                 <div class="modal-dialog">
@@ -1153,7 +1144,7 @@
                                             <div class="d-flex align-items-center">
                                                 <i class="fa fa-check-circle" style="font-size: 48px; color: forestgreen; margin-right: 15px;"></i>
                                                 <p>
-                                                    Выбрано <span class="badge bg-primary" id="selectedGuestsCount">${selectedGuests.length}</span> гостей.
+                                                    Выбрано <span class="badge bg-primary" id="selectedGuestsCount">${selectedGuestsIds.length}</span> гостей.
                                                     Вы можете перевести выбранных гостей в другой номер (комнату).
                                                     Операция применяется ко всем выбранным гостям!
                                                 </p>
@@ -1163,31 +1154,41 @@
                                                 <select id="id_room" name="id_room" class="select2 form-select" required>
                                                     <option value="">--- НЕ ВЫБРАНО ---</option>
                                                     @foreach ($rooms as $room)
-                                                    <option value="{{ $room->room_number }}">{{ $room->room_number }} - {{ $room->room_type }}</option>
+                                                    <option value="{{ $room->room_number }}">
+                                                        {{ $room->room_number }} - {{ $room->room_type }};
+                                                        {{ $room->room_floor }} - этаж;
+                                                        1/{{ $room->living_room }}
+                                                        @if (!empty($room->tag))
+                                                            ;({{ $room->tag }})
+                                                        @endif
+                                                    </option>
                                                     @endforeach
                                                 </select>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            `,
+                                `,
                         buttons: {
                             confirm: {
                                 text: 'Переместить',
+                                btnClass: 'btn-green',
                                 action: function() {
                                     const room_number = $('#id_room').val();
-
                                     if (!room_number) {
                                         $.alert('Пожалуйста, выберите номер комнаты.');
                                         return false;
                                     }
-
                                     $.ajax({
                                         url: '/listok/move-to-room',
                                         type: 'POST',
                                         data: {
                                             _token: '{{ csrf_token() }}',
-                                            guest_ids: selectedGuests, // Передача массива ID гостей
+                                            guest_ids: selectedGuestsIds,
+                                            hotel_ids: selectedHtlIds,
+                                            entry_bys: selectedAdmIds,
+                                            guests: selectedGuests,
+                                            old_room_numbers: selectedOldRoomNums,
                                             room_number: room_number
                                         },
                                         success: function(response) {
@@ -1198,8 +1199,8 @@
                                                     showConfirmButton: false,
                                                     timer: 1500
                                                 });
-                                                $('#listok-table').DataTable().ajax.reload(null,
-                                                    false);
+                                                window.location.reload();
+
                                             } else {
                                                 $.alert(response.message);
                                             }
@@ -1211,11 +1212,13 @@
                                 }
                             },
                             cancel: {
-                                text: 'Отмена'
+                                text: 'Отмена',
+                                btnClass: 'btn-danger'
                             }
                         },
                     });
                     break;
+
                 case 'status':
                     const selectedStatusRows = $('#listok-table').DataTable().rows({
                         selected: true
@@ -1224,40 +1227,42 @@
                         title: 'Статус оплаты',
                         type: 'blue',
                         content: `
-                            <div class="modal-dialog">
-                                <div class="modal-content">
-                                    <div class="modal-body">
-                                        <div class="d-flex align-items-center">
-                                            <i class="fa fa-check-circle" style="font-size: 48px; color: forestgreen; margin-right: 15px;"></i>
-                                            <p>
-                                                Выбрано <span class="badge bg-primary" id="selectedGuestsCount">${selectedStatusRows.length}</span> гостей.
-                                                Вы можете установить статус оплаты для выбранных гостей.
-                                                Операция применяется ко всем выбранным гостям!
-                                            </p>
-                                        </div>
-                                        <div class="mt-3">
-                                            <label for="paymentStatus" class="form-label">Статус оплаты:</label>
-                                            <select id="paymentStatus" class="form-select">
-                                                <option value="">--- Выберите статус ---</option>
-                                                <option value="paid">Оплачено</option>
-                                                <option value="pending">В ожидании</option>
-                                                <option value="canceled">Отменено</option>
-                                            </select>
-                                        </div>
-                                        <div class="mt-3">
-                                            <label for="paymentAmount" class="form-label">Сумма UZS:</label>
-                                            <input type="text" id="paymentAmount" class="form-control" placeholder="ИТОГОВАЯ СУММА">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-body">
+                                            <div class="d-flex align-items-center">
+                                                <i class="fa fa-check-circle" style="font-size: 48px; color: forestgreen; margin-right: 15px;"></i>
+                                                <p>
+                                                    Выбрано <span class="badge bg-primary" id="selectedGuestsCount">${selectedStatusRows.length}</span> гостей.
+                                                    Вы можете установить статус оплаты для выбранных гостей.
+                                                    Операция применяется ко всем выбранным гостям!
+                                                </p>
+                                            </div>
+                                            <div class="mt-3">
+                                                <label for="СТАТУС ОПЛАТЫ:" class=" control-label text-left"> СТАТУС ОПЛАТЫ: </label>
+                                                <select id="paymentStatus" class="form-select">
+                                                    <option value="0">--- Выберите статус ---</option>
+                                                    <option value="1">Оплачен частично</option>
+                                                    <option value="2">Оплачен полностью</option>
+                                                    <option value="3">Не оплачен</option>
+                                                </select>
+                                            </div>
+                                            <div class="mt-3">
+                                                <label for="СУММА ОПЛАТЫ:" class=" control-label text-left"> СУММА ОПЛАТЫ: </label>
+                                                <input id="paymentAmount" name="amount" style="text-align: right" class="form-control" type="number" max="9999999999" min="0" step="0.01" placeholder="0.00 UZS" value="0"/>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        `,
+                            `,
                         buttons: {
                             confirm: {
                                 text: 'Установить',
+                                btnClass: 'btn-green',
                                 action: function() {
+                                    const paymentStatus = $('#paymentStatus').val();
                                     const payment = $('#paymentAmount').val();
-                                    if (!payment) {
+                                    if (!payment || paymentStatus == '0') {
                                         $.alert('Пожалуйста, заполните все поля.');
                                         return false;
                                     }
@@ -1273,6 +1278,7 @@
                                         data: {
                                             _token: '{{ csrf_token() }}',
                                             guest_ids: selectedIds,
+                                            paymentStatus: paymentStatus,
                                             payment: payment,
                                         },
                                         success: function(response) {
@@ -1296,7 +1302,8 @@
                                 }
                             },
                             cancel: {
-                                text: 'Отмена'
+                                text: 'Отмена',
+                                btnClass: 'btn-danger',
                             }
                         }
                     });
@@ -1311,76 +1318,45 @@
                     }).data();
                     let rowsPerPage = 2;
                     let printContent = `
-                                    <!DOCTYPE html>
-                                    <html lang="ru">
-                                    <head>
-                                        <meta charset="UTF-8">
-                                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                                        <style>
-                                            body {
-                                                font-family: Arial, sans-serif;
-                                                margin: 0;
-                                                padding: 0;
-                                            }
-                                            .qrcode{
-                                            margin-left: 50px !important;
-                                                }
-                                            .page {
-                                                width: 100%;
-                                                margin: 0 auto;
-                                                padding: 20px;
-                                                box-sizing: border-box;
-                                                page-break-after: always;
-                                            }
-                                            .header {
-                                                display: flex;
-                                                justify-content: space-between;
-                                                align-items: center;
-                                                margin-bottom: 20px;
-                                            }
-                                            .header img {
-                                                height: 50px;
-                                            }
-                                            .header .hotel-info {
-                                                flex: 1;
-                                                margin-left: 60px !important;
-                                            }
-                                            .header .qr-code {
-                                                text-align: right;
-                                            }
-                                            .qr-code img {
-                                                width: 80px;
-                                                height: 80px;
-                                            }
-                                            table {
+                                         <!DOCTYPE html>
+                                        <html lang="ru">
+                                        <head>
+                                            <meta charset="UTF-8">
+                                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                                            <style>
+                                             table {
+                                                margin-top:10px !important;
                                                 width: 100%;
                                                 border-collapse: collapse;
-                                                margin-top: 10px;
+                                                table-layout: fixed;
                                             }
+                                            .qrcode{
+                                                margin-top:10px !important;
+                                                margin-left: 27px !important;
+                                                }
+
                                             table, th, td {
+
                                                 border: 1px solid #000;
                                             }
-                                            th {
+
+                                            th, td {
+                                                padding: 5px;
                                                 text-align: left;
-                                                padding: 5px;
-                                                background-color: #f9f9f9;
+                                                height: 15px;
+                                                vertical-align: middle; /* Выравнивание содержимого по центру */
                                             }
-                                            td {
-                                                padding: 5px;
-                                            }
-                                            .children-table th, .children-table td {
-                                                text-align: center;
-                                            }
-                                            .children-table {
-                                                margin-top: 10px;
-                                            }
-                                            .footer {
-                                                margin-top: 20px;
-                                            }
-                                        </style>
-                                    </head>
-                                    <body>
-                                `;
+
+                                            /* Установка фиксированной ширины для каждой колонки */
+                                            th:nth-child(1), td:nth-child(1) { width: 30%; } /* Первая колонка */
+                                            th:nth-child(2), td:nth-child(2) { width: 50%; } /* Вторая колонка */
+                                            th:nth-child(3), td:nth-child(3) { width: 20%;} /* Третья колонка */
+
+                                            </style>
+
+                                        </head>
+                                        <body>
+                                    `;
 
                     let currentCount = 0;
                     $.each(selectedPrintRows, function(index, row) {
@@ -1392,81 +1368,80 @@
                         const firstName = fullname[1] || '';
                         const surname = fullname[2] || '';
                         printContent += `
-                                        <table id="childrenTable" style="width: 100%; border: 1px solid black; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px;">
-                                            <tr>
-                                                <td colspan="1" style="border: 1px solid black; text-align: center; padding: 5px;">
-                                                    <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="height: 50px;">
-                                                </td>
-                                                <td colspan="2" style="border: 1px solid black; text-align: center; padding: 5px;">
-                                                    <strong>Гостиница:</strong> ${row.htl || ''}<br>
-                                                    <strong>Регион:</strong> ${row.region || ''}<br>
-                                                    <strong>Адрес:</strong> ${row.tag || ''}<br>
-                                                    <strong>№ ком.:</strong> ${row.room || ''}
-                                                </td>
-                                                <td colspan="1" style="border: 1px solid black; text-align: center; padding: 5px;">
-                                                    <div class="qrcode" id="qrcode-${row.regnum}"></div>
-                                                    <p>${row.regnum || ''}</p>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style="border: 1px solid black; padding: 5px;"><strong>1. ФАМИЛИЯ:</strong></td>
-                                                <td colspan="4" style="border: 1px solid black; padding: 5px;">${lastName || ''}</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="border: 1px solid black; padding: 5px;"><strong>2. ИМЯ:</strong></td>
-                                                <td colspan="4" style="border: 1px solid black; padding: 5px;">${firstName || ''}</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="border: 1px solid black; padding: 5px;"><strong>3. ОТЧЕСТВО:</strong></td>
-                                                <td colspan="4" style="border: 1px solid black; padding: 5px;">${surname || ''}</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="border: 1px solid black; padding: 5px;"><strong>4. ДАТА РОЖДЕНИЯ:</strong></td>
-                                                <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.datebirth || ''}</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="border: 1px solid black; padding: 5px;"><strong>5. ГРАЖДАНСТВО:</strong></td>
-                                                <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.ctzn || ''}</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="border: 1px solid black; padding: 5px;"><strong>6. ДОКУМЕНТ:</strong></td>
-                                                <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.document || ''}</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="border: 1px solid black; padding: 5px;"><strong>7. ВИЗА:</strong></td>
-                                                <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.visa || ''}</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="border: 1px solid black; padding: 5px;"><strong>8. ОТКУДА ПРИБЫЛ:</strong></td>
-                                                <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.arrival || ''}</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="border: 1px solid black; padding: 5px;"><strong>9. КПП:</strong></td>
-                                                <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.kppnumber || ''}</td>
-                                            </tr>
-                                            <tr>
-                                                <td colspan="5" style="border: 1px solid black; padding: 5px;"><strong>10. Вместе с ним/ней прибыли дети до 16 лет</strong></td>
-                                            </tr>
-                                            <tr>
-                                                <th style="border: 1px solid black; padding: 5px;"><strong>Имя</strong></th>
-                                                <th style="border: 1px solid black; padding: 5px;"><strong>Пол</strong></th>
-                                                <th colspan="3" style="border: 1px solid black; padding: 5px;"><strong>Дата рождения</strong></th>
-                                            </tr>
-
-                                            <tr>
-                                                <td style="border: 1px solid black; padding: 5px;"><strong>11. ДАТА ПРИБЫТИЯ:</strong></td>
-                                                <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.dateArrival || ''}</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="border: 1px solid black; padding: 5px;"><strong>12. ДАТА УБЫТИЯ:</strong></td>
-                                                <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.dateDeparture || ''}</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="border: 1px solid black; padding: 5px;"><strong>13. АДМИНИСТРАТОР:</strong></td>
-                                                <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.adm || ''}</td>
-                                            </tr>
-                                        </table>
-                                    `;
+            <table id="childrenTable" style="width: 100%; border: 1px solid black; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px;">
+                <tr>
+                    <td colspan="1" style="border: 1px solid black; text-align: center; padding: 5px;">
+                        <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="height: 50px;">
+                    </td>
+                    <td colspan="2" style="border: 1px solid black; text-align: center; padding: 5px;">
+                        <strong>Гостиница:</strong> ${row.htl || '&nbsp;'}<br>
+                        <strong>Регион:</strong> ${row.region || '&nbsp;'}<br>
+                        <strong>Адрес:</strong> ${row.tag || '&nbsp;'}<br>
+                        <strong>№ ком.:</strong> ${row.room || '&nbsp;'}
+                    </td>
+                    <td colspan="1" style="border: 1px solid black; text-align: center; padding: 5px;">
+                        <div class="qrcode" id="qrcode-${row.regNum}"></div>
+                        <p>${row.regNum || '&nbsp;'}</p>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black; padding: 5px;"><strong>1. ФАМИЛИЯ:</strong></td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${lastName || '&nbsp;'}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black; padding: 5px;"><strong>2. ИМЯ:</strong></td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${firstName || '&nbsp;'}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black; padding: 5px;"><strong>3. ОТЧЕСТВО:</strong></td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${surname || '&nbsp;'}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black; padding: 5px;"><strong>4. ДАТА РОЖДЕНИЯ:</strong></td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.datebirth || '&nbsp;'}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black; padding: 5px;"><strong>5. ГРАЖДАНСТВО:</strong></td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.ctzn || '&nbsp;'}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black; padding: 5px;"><strong>6. ДОКУМЕНТ:</strong></td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.document || '&nbsp;'}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black; padding: 5px;"><strong>7. ВИЗА:</strong></td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.visa || '&nbsp;'}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black; padding: 5px;"><strong>8. ОТКУДА ПРИБЫЛ:</strong></td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.arrival || '&nbsp;'}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black; padding: 5px;"><strong>9. КПП:</strong></td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.kppnumber || '&nbsp;'}</td>
+                </tr>
+                <tr>
+                    <td colspan="5" style="border: 1px solid black; padding: 5px;"><strong>10. Вместе с ним/ней прибыли дети до 16 лет</strong></td>
+                </tr>
+                <tr>
+                    <th style="border: 1px solid black; padding: 5px;"><strong>Имя</strong></th>
+                    <th style="border: 1px solid black; padding: 5px;"><strong>Пол</strong></th>
+                    <th colspan="3" style="border: 1px solid black; padding: 5px;"><strong>Дата рождения</strong></th>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black; padding: 5px;"><strong>11. ДАТА ПРИБЫТИЯ:</strong></td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.dateArrival || '&nbsp;'}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black; padding: 5px;"><strong>12. ДАТА УБЫТИЯ:</strong></td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.dateDeparture || '&nbsp;'}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid black; padding: 5px;"><strong>13. АДМИНИСТРАТОР:</strong></td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.adm || '&nbsp;'}</td>
+                </tr>
+            </table>
+        `;
 
                         currentCount++;
                         if (currentCount === rowsPerPage) {
@@ -1492,23 +1467,24 @@
 
                     iframe.onload = function() {
                         $.each(selectedPrintRows, function(index, row) {
-                            new QRCode(iframe.contentWindow.document
-                                .getElementById(
-                                    `qrcode-${row.regnum}`), {
-                                    text: row.regnum,
+                            const url = `https://example.com/guest/${row.regNum}`;
+                            let qrElement = iframe.contentWindow.document.getElementById(`qrcode-${row.regNum}`);
+                            if (qrElement) {
+                                new QRCode(qrElement, {
+                                    text: url,
                                     width: 80,
                                     height: 80
                                 });
+                            } else {
+                                console.error(`Element qrcode-${row.regNum} not found`);
+                            }
                         });
 
                         setTimeout(function() {
                             let printWindow = iframe.contentWindow;
-
                             printWindow.onafterprint = function() {
-                                document.body.removeChild(
-                                    iframe);
+                                document.body.removeChild(iframe);
                             };
-
                             printWindow.focus();
                             printWindow.print();
                         }, 500);
@@ -1547,7 +1523,7 @@
                         `,
                         buttons: {
                             ДОБАВИТЬ: {
-                                btnClass: 'btn-primary',
+                                btnClass: 'btn-green',
                                 action: function() {
                                     const feedback = this.$content.find('#feedbackText').val();
                                     const blacklistStatus = this.$content.find(
@@ -1579,8 +1555,7 @@
                                                     showConfirmButton: false,
                                                     timer: 1500
                                                 });
-                                                $('#listok-table').DataTable().ajax.reload(null,
-                                                    false);
+                                                window.location.reload();
                                             } else {
                                                 $.alert({
                                                     title: 'Ошибка!',
@@ -1600,7 +1575,9 @@
                                     });
                                 }
                             },
-                            ОТМЕНА: function() {}
+                            ОТМЕНА: {
+                                btnClass: 'btn-danger',
+                            }
                         }
                     });
                     break;
@@ -1629,8 +1606,8 @@
                         useBootstrap: false,
                         buttons: {
                             confirm: {
-                                text: 'OK',
-                                btnClass: 'btn-blue',
+                                text: 'ДОБАВИТЬ',
+                                btnClass: 'btn-green',
                                 action: function() {
                                     const tag = this.$content.find('#guest-tag').val();
 
@@ -1675,7 +1652,7 @@
                             },
                             cancel: {
                                 text: 'Отмена',
-                                btnClass: 'btn-default'
+                                btnClass: 'btn-danger'
                             }
                         }
                     });
@@ -1742,7 +1719,7 @@
                             },
                             cancel: {
                                 text: 'Отмена',
-                                btnClass: 'btn-default'
+                                btnClass: 'btn-blue'
                             }
                         }
                     });
@@ -1753,20 +1730,20 @@
                         title: 'Продление визы.',
                         type: 'blue',
                         content: `
-            <div>
-                <p><i class="fa fa-user" style="color: #007bff;"></i> Выбрано <b>1</b> гостей.</p>
-                <form id="visa-form">
-                    <div style="margin-bottom: 10px;">
-                        <label for="dateVisaOn">Срок визы с:</label>
-                        <input type="date" id="dateVisaOn" name="dateVisaOn" class="form-control">
-                    </div>
-                    <div>
-                        <label for="dateVisaOff">Срок визы до:</label>
-                        <input type="date" id="dateVisaOff" name="dateVisaOff" class="form-control">
-                    </div>
-                </form>
-            </div>
-        `,
+                            <div>
+                                <p style="margin-left:20px;">${rowData.ctz} ${rowData.guest}</p>
+                                <form id="visa-form">
+                                    <div style="margin-bottom: 10px;">
+                                        <label for="dateVisaOn">Срок визы с:</label>
+                                        <input type="date" id="dateVisaOn" name="dateVisaOn" class="form-control">
+                                    </div>
+                                    <div>
+                                        <label for="dateVisaOff">Срок визы до:</label>
+                                        <input type="date" id="dateVisaOff" name="dateVisaOff" class="form-control">
+                                    </div>
+                                </form>
+                            </div>
+                                `,
                         boxWidth: '400px',
                         useBootstrap: false,
                         buttons: {
@@ -1814,7 +1791,7 @@
                             },
                             cancel: {
                                 text: 'ОТМЕНА',
-                                btnClass: 'btn-default'
+                                btnClass: 'btn-danger'
                             }
                         }
                     });
@@ -1829,13 +1806,16 @@
     {{-- dbclick --}}
     <script>
         $(document).ready(function() {
-            $('#listok-table tbody').on('dblclick', 'tr', function() {
+            $('#listok-table tbody').on('click', '.open-menu-btn', function(event) {
+                event.stopPropagation();
                 var table = $('#listok-table').DataTable();
-                var data = table.row(this).data();
+                var data = table.row($(this).closest('tr')).data();
                 var children = childrenData.filter(child => child.id === data.id);
-                var pasport_data = childrenData.filter(pasport => pasport.listok_id === data.id);
+                var filteredFeedbacks = feedbacks.filter(feedback => feedback.pspNumber == data.passportNumber);
+                var roomHistory = roomhistory.filter(room => room.id_reg == data.id);
+                var bronRoom = bronroom.filter(bron => bron.id == data.book_id);
                 $.confirm({
-                    title: `Регистрационный номер: ${data.regNum}`,
+                    title: `Регистрационный номер: <span class="badge bg-primary">${data.regNum}</span>`,
                     content: `
                 <div class="tabs">
                     <ul class="nav nav-tabs" role="tablist">
@@ -1846,71 +1826,101 @@
                             <a class="nav-link" data-bs-toggle="tab" href="#additional-info" role="tab">Доп. информация</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" data-bs-toggle="tab" href="#children-info" role="tab">Информация о детях</a>
+                            <a class="nav-link" data-bs-toggle="tab" href="#feedback" role="tab">Отзывы  <span class="badge bg-primary">${filteredFeedbacks.length}</span></a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#children-info" role="tab">Информация о детях <span class="badge bg-primary">${children.length}</span></a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#change-room" role="tab">Номера <span class="badge bg-primary">${roomHistory.length}</span></a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#bron-room" role="tab">Бронирования <span class="badge bg-primary">${bronRoom.length}</span></a>
                         </li>
                     </ul>
-                    <div class="tab-content">
-                        <div class="tab-pane fade show active" id="info" role="tabpanel">
+                    <div class="row tab-content">
+                        <div class="tab-pane fade show active col-md-10" id="info" role="tabpanel">
                             <table class="table dataTable row-border compact table-hover" id="db-click-table">
                                 <tbody>
                                     <tr>
-                                        <th>Рег. №</th>
+                                        <th>Рег. №:</th>
                                         <td>${data.regNum || 'Не указано'}</td>
                                     </tr>
                                     <tr>
-                                        <th>Фамилия, Имя, Отчество</th>
+                                        <th>ПИНФЛ:</th>
+                                        <td>${data.pinfl || 'Не указано'}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Фамилия, Имя, Отчество:</th>
                                         <td>${data.guest}</td>
                                     </tr>
                                     <tr>
-                                        <th>Дата рождения</th>
+                                        <th>Дата рождения:</th>
                                         <td>${formatDate(data.datebirth)}</td>
                                     </tr>
                                     <tr>
-                                        <th>Страна рождения</th>
+                                        <th>Страна рождения:</th>
                                         <td>${data.ctz} ${data.ctzn}</td>
                                     </tr>
                                     <tr>
-                                        <th>Гражданство</th>
+                                        <th>Гражданство:</th>
                                         <td>${data.ctz} ${data.ctzn}</td>
                                     </tr>
                                     <tr>
-                                        <th>Откуда</th>
+                                        <th>Откуда:</th>
                                         <td>${data.ctz} ${data.ctzn}</td>
                                     </tr>
                                     <tr>
-                                        <th>Прибыл на (дней)</th>
+                                        <th>Проживает в номере:	</th>
+                                        <td>${data.room}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Сколько дней будет проживать:</th>
                                         <td>${data.wdays || 'Не указано'}</td>
                                     </tr>
                                     <tr>
-                                        <th>Сумма турсбора</th>
-                                        <td>${data.amount || 'Не указано'}</td>
+                                        <th>Статус оплаты:</th>
+                                        <td>
+                                            ${data.payed === 1
+                                            ? 'Оплачен частично'
+                                            : data.payed === 2
+                                            ? 'Оплачен полностью'
+                                            : data.payed === 3
+                                            ? 'Неоплачен'
+                                            : 'Не указано'}
+                                        </td>
                                     </tr>
                                     <tr>
-                                        <th>Пол</th>
+                                        <th>Сумма (UZS):</th>
+                                        <td>${data.amount || '0,00'}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Пол:</th>
                                         <td>${data.sex === 'M' ? 'Мужчина' : 'Женщина'}</td>
                                     </tr>
                                     <tr>
-                                        <th>Прибыл</th>
+                                        <th>Прибыл:</th>
                                         <td>${data.dt || 'Не указано'}</td>
                                     </tr>
                                     <tr>
-                                        <th>Гостиница</th>
+                                        <th>Гостиница:</th>
                                         <td>${data.htl || 'Не указано'}</td>
                                     </tr>
                                     <tr>
-                                        <th>Зарегистрировал</th>
+                                        <th>Зарегистрировал:</th>
                                         <td>${data.adm || 'Не указано'}</td>
                                     </tr>
                                     <tr>
-                                        <th>Обновлено</th>
-                                        <td>${data.update_at || 'Не указано'}</td>
+                                        <th>Обновлено:</th>
+                                        <td>${data.updated_at || 'Не указано'}</td>
                                     </tr>
+
                                 </tbody>
                             </table>
                         </div>
-                        <!-- Вкладка "Доп. информация" -->
+                        <div class="qrcode col-md-2" id="qrcode-${data.regNum}"></div>
                         <div class="tab-pane fade" id="additional-info" role="tabpanel">
-                            <table class="table dataTable row-border compact table-hover">
+                            <table class="table dataTable row-border compact table-hover" id="db-click-table">
                                 <tbody>
                                     <tr>
                                         <th>Тип документа</th>
@@ -1939,48 +1949,217 @@
 
                                     <tr>
                                         <th>КПП и дата</th>
-                                        <td>№ ${data.kppnumber || 'Не указано'}; Дата: ${formatDate(data.datekpp)}</td>
+                                        <td>№ ${data.kppNumber || 'Не указано'}; Дата: ${formatDate(data.dateKPP)}</td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
-                        <!-- Вкладка "Информация о детях" -->
-                        <div class="tab-pane fade" id="children-info" role="tabpanel">
-                            ${
-                                Array.isArray(children) && children.length > 0
-                                    ? `
-                                                                                                            <table class="table dataTable row-border compact table-hover">
-                                                                                                                <thead>
-                                                                                                                    <tr>
-                                                                                                                        <th>ФИО ребёнка</th>
-                                                                                                                        <th>Дата рождения</th>
-                                                                                                                        <th>Пол</th>
-                                                                                                                    </tr>
-                                                                                                                </thead>
-                                                                                                                <tbody>
-                                                                                                                    ${children.map(child => `
-                                                    <tr>
-                                                        <td>${child.child_name}</td>
-                                                        <td>${formatDate(child.child_dateBirth)}</td>
-                                                        <td>${child.child_gender === 'M' ? 'Мальчик' : 'Девушка'}</td>
-                                                    </tr>
-                                                `).join('')}
-                                                                                                                </tbody>
-                                                                                                            </table>
-                                                                                                        `
-                                    : '<p>Нет информации о детях</p>'
-                            }
+
+                       <div class="tab-pane fade" id="feedback" role="tabpanel">
+                            <table class="table dataTable row-border compact table-hover">
+                                    <thead>
+                                        <tr class="text-center">
+                                            <th>Дата</th>
+                                            <th>Отзыв</th>
+                                            <th>Гостиница</th>
+                                            <th>Администратор</th>
+                                        </tr>
+                                    </thead>
+                                <tbody>
+                                        ${filteredFeedbacks.length > 0 ? filteredFeedbacks.map(feedback => `
+                                            <tr class="text-center">
+                                                <td>${feedback.created_at || 'Не указано'}</td>
+                                                <td>${feedback.text || 'Не указано'}</td>
+                                                <td>${feedback.htl || 'Не указано'}</td>
+                                                <td>${feedback.adm || 'Не указано'}</td>
+                                            </tr>
+                                        `).join('') : '<tr><td colspan="4" class="text-center">Отзывов нет</td></tr>'}
+                                    </tbody>
+                            </table>
+                            <div class="d-flex justify-content-end mt-3">
+                                <button id="add-review-btn" class="btn btn-outline-warning rounded">
+                                    <i class="fas fa-comment"></i> Добавить отзыв
+                                </button>
+                            </div>
+                        </div>
+
+
+                       <div class="tab-pane fade" id="children-info" role="tabpanel">
+                            <table class="table dataTable row-border compact table-hover">
+                                <thead>
+                                    <tr class="text-center">
+                                        <th>ФИО ребёнка</th>
+                                        <th>Дата рождения</th>
+                                        <th>Пол</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${children.length > 0 ? children.map(child => `
+                                        <tr class="text-center">
+                                            <td>${child.child_name || 'Не указано'}</td>
+                                            <td>${formatDate(child.child_dateBirth) || 'Не указано'}</td>
+                                            <td>${child.child_gender === 'M' ? 'Мальчик' : child.child_gender === 'F' ? 'Девочка' : 'Не указано'}</td>
+                                        </tr>
+                                    `).join('') : '<tr><td colspan="3" class="text-center">Нет информации о детях</td></tr>'}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="tab-pane fade" id="change-room" role="tabpanel">
+                            <table class="table dataTable row-border compact table-hover">
+                                    <thead>
+                                        <tr class="text-center">
+                                            <th>Дата</th>
+                                            <th>Комната</th>
+                                            <th>Гостиница</th>
+                                            <th>Администратор</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${roomHistory.length > 0 ? roomHistory.map(room => `
+                                            <tr class="text-center">
+                                                <td>${room.created_at || 'Не указано'}</td>
+                                                <td>${room.events || 'Не указано'}</td>
+                                                <td>${room.htl || 'Не указано'}</td>
+                                                <td>${room.adm || 'Не указано'}</td>
+                                            </tr>
+                                        `).join('') : '<tr><td colspan="4" class="text-center">Нет данных! Гость ни разу не менял номер (комнату)!</td></tr>'}
+                                    </tbody>
+                            </table>
+                        </div>
+                        <div class="tab-pane fade" id="bron-room" role="tabpanel">
+                            <table class="table dataTable row-border compact table-hover">
+                                    <thead>
+                                        <tr class="text-center">
+                                            <th>Дата бронирования</th>
+                                            <th>Номер телефона</th>
+                                            <th>Гостиница</th>
+                                            <th>Организация</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${bronRoom.length > 0 ? bronRoom.map(bron => `
+                                            <tr class="text-center">
+                                                <td>${bron.bron_date || 'Не указано'}</td>
+                                                <td>${bron.phone_number || 'Не указано'}</td>
+                                                <td>${bron.htl || 'Не указано'}</td>
+                                                <td>${bron.org_name || 'Не указано'}</td>
+                                            </tr>
+                                        `).join('') : '<tr><td colspan="4" class="text-center">Нет данных! Гость ни разу не бронировал номер (комнату)!</td></tr>'}
+                                    </tbody>
+                            </table>
                         </div>
                 </div>
             `,
                     type: 'blue',
-                    boxWidth: '70%',
+                    boxWidth: '75%',
                     useBootstrap: false,
-                    buttons: {
-                        close: {
-                            text: 'Закрыть',
-                            btnClass: 'btn-blue'
+                    buttons: false,
+                    onContentReady: function() {
+                        const qrCodeContainer = document.getElementById(`qrcode-${data.regNum}`);
+
+                        if (qrCodeContainer) {
+                            new QRCode(qrCodeContainer, {
+                                text: data.regNum.toString(),
+                                width: 200,
+                                height: 200
+                            });
+                        } else {
+                            console.error("QR-код контейнер не найден.");
                         }
+                        this.$content.find('#add-review-btn').on('click', function() {
+                            $.confirm({
+                                title: 'Добавить Отзыв',
+                                type: "blue",
+                                content: `
+                                    <p style="margin-left:20px;">${data.ctz} ${data.guest}</p>
+                                    <textarea class="form-control" id="feedbackText" rows="4" placeholder="Введите отзыв"></textarea>
+                                    <div class="form-check mt-3">
+                                        <label class="form-label">Черный список:</label>
+                                        <div>
+                                            <input type="radio" name="blacklist" value="yes" id="blacklistYes">
+                                            <label for="blacklistYes">ДА</label>
+                                            <input type="radio" name="blacklist" value="no" id="blacklistNo" checked>
+                                            <label for="blacklistNo">НЕТ</label>
+                                        </div>
+                                    </div>
+                                `,
+                                buttons: {
+                                    ДОБАВИТЬ: {
+                                        btnClass: 'btn-green',
+                                        action: function() {
+                                            const feedback = this.$content.find('#feedbackText').val();
+                                            const blacklistStatus = this.$content.find(
+                                                'input[name="blacklist"]:checked').val();
+
+                                            if (!feedback.trim()) {
+                                                $.alert('Пожалуйста, введите отзыв!');
+                                                return false;
+                                            }
+
+                                            $.ajax({
+                                                url: '/listok/feedback',
+                                                method: 'POST',
+                                                data: {
+                                                    id_citizen: data.id_citizen,
+                                                    passportSerial: data.passportSerial,
+                                                    passportNumber: data.passportNumber,
+                                                    entry_by: data.entry_by,
+                                                    person_id: data.id_person,
+                                                    feedback: feedback,
+                                                    blacklist: blacklistStatus,
+                                                    _token: $('meta[name="csrf-token"]').attr('content')
+                                                },
+                                                success: function(response) {
+                                                    if (response.success) {
+                                                        const newFeedback = {
+                                                            created_at: response.data.created_at || 'Не указано',
+                                                            text: response.data.feedback || 'Не указано',
+                                                            htl: data.htl || 'Не указано',
+                                                            adm: data.adm || 'Не указано',
+                                                        };
+                                                        filteredFeedbacks.push(newFeedback);
+
+                                                        const tbodyContent = filteredFeedbacks.length > 0
+                                                            ? filteredFeedbacks.map(feedback => `
+                                                                <tr class="text-center">
+                                                                    <td>${feedback.created_at}</td>
+                                                                    <td>${feedback.text}</td>
+                                                                    <td>${feedback.htl}</td>
+                                                                    <td>${feedback.adm}</td>
+                                                                </tr>
+                                                            `).join('')
+                                                            : '<tr><td colspan="4" class="text-center">Отзывов нет</td></tr>';
+                                                        $('#feedback tbody').html(tbodyContent);
+
+                                                        $('a[href="#feedback"] .badge').text(filteredFeedbacks.length);
+
+                                                    } else {
+                                                        $.alert({
+                                                            title: 'Ошибка!',
+                                                            content: response.message || 'Ошибка добавления отзыва!',
+                                                            type: 'red'
+                                                        });
+                                                    }
+                                                },
+
+                                                error: function() {
+                                                    $.alert({
+                                                        title: 'Ошибка!',
+                                                        content: 'Ошибка сервера!',
+                                                        type: 'red'
+                                                    });
+                                                }
+                                            });
+                                        }
+                                    },
+                                    ОТМЕНА: {
+                                        btnClass: 'btn-danger',
+                                    }
+                                }
+                            });
+                        })
+
                     }
                 });
             });
@@ -1990,10 +2169,20 @@
     {{-- Global search --}}
     <script>
         $(document).ready(function() {
+            if (localStorage.getItem('globalFilters')) {
+                let filters = JSON.parse(localStorage.getItem('globalFilters'));
+                for (let key in filters) {
+                    $('[name="' + key + '"]').val(filters[key]);
+                }
+            }
+
             $('#toggle-filter-btn').on('click', function() {
+                let savedFilters = localStorage.getItem('globalFilters');
+                let filterValues = savedFilters ? JSON.parse(savedFilters) : {};
+
                 $.confirm({
                     title: 'Глобальный поиск',
-                    boxWidth: '800px',
+                    boxWidth: '900px',
                     useBootstrap: false,
                     type: "blue",
                     content: "<div class='global-search'>" +
@@ -2001,97 +2190,101 @@
                         "<div class='row align-items-center mb-3'>" +
                         "<label class='col-md-3'>ФАМИЛИЯ:</label>" +
                         "<div class='col-md-6 search-input'>" +
-                        "<input type='text' class='form-control' placeholder='ФАМИЛИЯ' name='surname'>" +
+                        "<input type='text' class='form-control' placeholder='ФАМИЛИЯ' name='surname' value='" + (filterValues.surname || '') + "'>" +
                         "</div>" +
                         "</div>" +
-
                         "<div class='row align-items-center mb-3'>" +
                         "<label class='col-md-3'>ИМЯ:</label>" +
                         "<div class='col-md-6 search-input'>" +
-                        "<input type='text' class='form-control' placeholder='ИМЯ' name='firstname'>" +
+                        "<input type='text' class='form-control' placeholder='ИМЯ' name='firstname' value='" + (filterValues.firstname || '') + "'>" +
                         "</div>" +
                         "</div>" +
-
                         "<div class='row align-items-center mb-3'>" +
                         "<label class='col-md-3'>ОТЧЕСТВО:</label>" +
                         "<div class='col-md-6 search-input'>" +
-                        "<input type='text' class='form-control' placeholder='ОТЧЕСТВО' name='lastname'>" +
+                        "<input type='text' class='form-control' placeholder='ОТЧЕСТВО' name='lastname' value='" + (filterValues.lastname || '') + "'>" +
                         "</div>" +
                         "</div>" +
-
                         "<div class='row align-items-center mb-3'>" +
                         "<label class='col-md-3'>ДАТА РОЖДЕНИЯ:</label>" +
                         "<div class='col-md-6 search-input'>" +
-                        "<input type='date' class='form-control' name='datebirth' value='' id='date-birth'>" +
+                        "<input type='date' class='form-control' name='datebirth' value='" + (filterValues.datebirth || '') + "' id='date-birth'>" +
                         "<small id='birth-date-error' class='text-danger' style='display: none;'>Sana noto‘g‘ri kiritilgan!</small>" +
                         "</div>" +
                         "</div>" +
-
                         "<div class='row align-items-center mb-3'>" +
                         "<label class='col-md-3'>ГРАЖДАНСТВО:</label>" +
                         "<div class='col-md-6 search-input'>" +
                         "<select class='form-control' name='citizenship' id='citizenship'>" +
                         "<option value=''>-- НЕ ВЫБРАНО --</option>" +
                         "@foreach ($ctzns as $ctzn)" +
-                        "<option value='{{ $ctzn->id }}'>{{ $ctzn->name }}</option>" +
+                        "<option value='{{ $ctzn->id }}' " + (filterValues.citizenship == '{{ $ctzn->id }}' ? 'selected' : '') + ">{{ $ctzn->name }}</option>" +
                         "@endforeach" +
                         "</select>" +
                         "</div>" +
                         "</div>" +
-
                         "<div class='row align-items-center mb-3'>" +
                         "<label class='col-md-3'>ПЕРИОД ПРИБЫТИЯ:</label>" +
                         "<div class='col-md-6 search-input'>" +
                         "<div class='d-flex'>" +
-                        "<input type='date' class='form-control me-2' name='arrival_from'>" +
-                        "<input type='date' class='form-control' name='arrival_to'>" +
+                        "<input type='date' class='form-control me-2' name='arrival_from' value='" + (filterValues.arrival_from || '') + "'>" +
+                        "<input type='date' class='form-control' name='arrival_to' value='" + (filterValues.arrival_to || '') + "'>" +
                         "</div>" +
                         "</div>" +
                         "</div>" +
-
                         "<div class='row align-items-center mb-3'>" +
                         "<label class='col-md-3'>ПАСПОРТ СЕРИЯ №:</label>" +
                         "<div class='col-md-6 search-input'>" +
-                        "<input type='text' class='form-control' placeholder='СЕРИЯ/НОМЕР' name='passport_number'>" +
+                        "<input type='text' class='form-control' placeholder='СЕРИЯ/НОМЕР' name='passport_number' value='" + (filterValues.passport_number || '') + "'>" +
                         "</div>" +
                         "</div>" +
-
+                        "<div class='admin'>" +
                         "<div class='row align-items-center mb-3'>" +
                         "<label class='col-md-3'>РЕГИОН:</label>" +
                         "<div class='col-md-6 search-input'>" +
                         "<select class='form-control' name='region' id='region'>" +
                         "<option value=''>-- НЕ ВЫБРАНО --</option>" +
                         "@foreach ($regions as $region)" +
-                        "<option value='{{ $region->id }}'>{{ $region->name }}</option>" +
+                        "<option value='{{ $region->id }}' " + (filterValues.region == '{{ $region->id }}' ? 'selected' : '') + ">{{ $region->name }}</option>" +
                         "@endforeach" +
                         "</select>" +
                         "</div>" +
                         "</div>" +
-
                         "<div class='row align-items-center mb-3'>" +
                         "<label class='col-md-3'>ГОСТИНИЦА:</label>" +
                         "<div class='col-md-6 search-input'>" +
                         "<select class='form-control' name='hotel' id='hotel'>" +
                         "<option value=''>-- НЕ ВЫБРАНО --</option>" +
                         "@foreach ($hotels as $hotel)" +
-                        "<option value='{{ $hotel->id }}'>{{ $hotel->name }}</option>" +
+                        "<option value='{{ $hotel->id }}' " + (filterValues.hotel == '{{ $hotel->id }}' ? 'selected' : '') + ">{{ $hotel->name }}</option>" +
                         "@endforeach" +
                         "</select>" +
+                        "</div>" +
                         "</div>" +
                         "</div>" +
                         "</form>" +
                         "</div>",
                     buttons: {
-                        Поиск: {
-                            btnClass: 'btn-blue',
+                        ПОИСК: {
+                            btnClass: 'btn-green',
                             action: function() {
+                                var filters = $('#global-search-form').serializeArray();
+                                var filterObject = {};
+                                filters.forEach(function(field) {
+                                    filterObject[field.name] = field.value;
+                                });
+
+                                localStorage.setItem('globalFilters', JSON.stringify(filterObject));
+
+                                $('#regNum-filter').val('');
+                                $('#room-filter').val('');
+                                $('#tag-filter').val('');
                                 $('#listok-table').DataTable().ajax.reload(null, false);
                             },
                         },
-                        Отмена: function() {},
+                        ОТМЕНА: {btnClass: 'btn-danger'},
                     },
                     onContentReady: function() {
-
                         $('#citizenship, #region, #hotel').selectize({
                             create: true,
                             sortField: 'text',
@@ -2101,31 +2294,133 @@
                     },
                 });
             });
+
+            $('#clear-filter-btn').on('click', function () {
+                $('#regNum-filter').val('');
+                $('#room-filter').val('');
+                $('#tag-filter').val('');
+                $('#global-search-form input').val('');
+                $('#global-search-form select').val('').trigger('change');
+
+                var table = $('#listok-table').DataTable();
+                table.ajax.params = {};
+                table.search('').columns().search('');
+                table.ajax.reload();
+
+                localStorage.removeItem('globalFilters');
+            });
         });
+
+
     </script>
 
+    {{-- Convert excel --}}
     <script>
-    $(document).ready(function () {
+        $('#excelButton').on('click', function() {
 
-    });
+            const table = $('#listok-table').DataTable();
+
+            const allData = table.rows().data().toArray();
+            const headers = [
+                "РЕГ.№",
+                "Ф.И.О ГОСТЯ",
+                "ГРАЖДАНСТВО",
+                "ПАСПОРТ",
+                "НОМЕР",
+                "ПРИБЫЛ",
+                "ПРИБЫЛ_НА",
+                "ГОСТИНИЦА",
+                "РЕГИОН",
+                "ОПЛАТА",
+                "ТЕГ",
+                "АДМИНИСТРАТОР",
+            ];
+            const ws_data = [headers];
+            allData.forEach(row => {
+                ws_data.push([
+                    row.regNum || "",
+                    row.guest || "",
+                    row.ctzn || "",
+                    row.passport_full || "",
+                    row.room || "",
+                    row.dt || "",
+                    row.wdays || "",
+                    row.htl || "",
+                    row.region || "",
+                    row.amount || "",
+                    row.tag || "",
+                    row.adm || "",
+                ]);
+            });
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(ws_data);
+
+            const colWidths = headers.map((header, index) => {
+                let maxLength = header.length;
+                ws_data.forEach(row => {
+                    const value = row[index] ||
+                        "";
+                    const length = value.toString().length;
+                    if (length > maxLength) {
+                        maxLength = length;
+                    }
+                });
+                return {
+                    wch: maxLength + 2
+                };
+            });
+
+            ws['!cols'] = colWidths;
+
+            XLSX.utils.book_append_sheet(wb, ws, 'listok');
+
+            XLSX.writeFile(wb, 'UZBEKTURIZM.xlsx');
+        });
+
     </script>
+
 
 @endsection
-
+@section('header_title', 'Листок прибития')
 @section('content')
     <div id="room-index">
         <div class="container-fluid">
             <div class="row">
-                <h4 class="listok_title">Листок прибытия</h4>
                 <div class="card" id="user">
                     <div class="card-nav d-flex justify-content-between align-items-center">
-                        <div class="btn-group me-5" role="group" aria-label="Basic example">
+                        <div class="btn-group" role="group" aria-label="Basic example">
                             <div class="container mb-3">
                                 <div class="col-md-12">
-                                    <button type="button" class="btn btn-info rounded" id="toggle-fast-filter-btn">
-                                        Быстрый Поиск
+                                    <a href="/listok/create" class="btn btn-outline-primary rounded me-2">
+                                        <i class="fas fa-plus"></i>
+                                    </a>
+
+                                    <button id="deleteButton" type="button" class="btn btn-outline-danger rounded me-2">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+
+                                    <button id="checkout" type="button" class="btn btn-outline-danger rounded me-2">
+                                        <i class="fa fa-plane"></i>
+                                    </button>
+
+                                    <button type="button" class="btn btn-outline-info rounded me-2" id="toggle-filter-btn">
+                                        <i class="fa fa-filter"></i>
+                                    </button>
+
+                                    <button type="button" class="btn btn-outline-info rounded me-2" id="toggle-fast-filter-btn">
+                                        <i class="fa fa-search-plus"></i>
+                                    </button>
+
+                                    <button type="button" class="btn btn-outline-info rounded me-2" id="clear-filter-btn">
+                                        <i class="fa fa-undo"></i>
+                                    </button>
+
+                                    <button id="excelButton" type="button" class="btn btn-outline-success rounded me-2">
+                                        <i class="fas fa-file-excel"></i>
                                     </button>
                                 </div>
+
                                 <div class="collapse mt-3" id="filter-section">
                                     <div class="p-3 border rounded bg-light shadow-sm">
                                         <div class="d-flex justify-content-between align-items-center">
@@ -2142,23 +2437,6 @@
                                             </button>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div class="col-md-12 mt-4">
-                                    <a href="/listok/create" class="btn btn-outline-primary rounded me-2">
-                                        <i class="fas fa-plus"></i>
-                                    </a>
-                                    <button id="deleteButton" type="button" class="btn btn-outline-danger rounded">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </button>
-
-                                    <button id="checkout" type="button" class="btn btn-outline-danger rounded">
-                                        <i class="fa fa-plane"></i>
-                                    </button>
-
-                                    <button type="button" class="btn btn-outline-info rounded" id="toggle-filter-btn">
-                                        <i class="fa fa-filter"></i>
-                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -2193,7 +2471,7 @@
                         <div id="custom-loading">
                             <div class="spinner"></div>
                         </div>
-                        <table class="table dataTable row-border table-hover" id="listok-table" style="width: 100%">
+                        <table class="table bg-gradient-info dataTable row-border table-hover" id="listok-table" style="width: 100%">
                             <thead>
                                 <tr>
                                     <th></th>

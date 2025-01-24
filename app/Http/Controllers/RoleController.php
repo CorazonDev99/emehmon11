@@ -3,150 +3,210 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Http\Controllers\Controller;
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\Models\Permission;
 use Illuminate\Support\Facades\DB;
 
 class RoleController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    function __construct()
-    {
-        $this->middleware('auth');
-        $this->middleware('role:super-admin');
-//        $this->middleware('permission:role-list|role-create|role-edit|role-delete', ['only' => ['index','store']]);
-//        $this->middleware('permission:role-create', ['only' => ['create','store']]);
-//        $this->middleware('permission:role-edit', ['only' => ['edit','update']]);
-//        $this->middleware('permission:role-delete', ['only' => ['destroy']]);
-    }
 
-    /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
     public function index(Request $request)
     {
-        $roles = Role::orderBy('id','ASC')->get();
-        return view('core.roles.index',compact('roles'))->with('i', ($request->input('page', 1) - 1) * 5);
+        $roles = DB::table('roles')->orderBy('id', 'ASC')->get();
+        return view('core.roles.index', compact('roles'))
+            ->with('i', ($request->input('page', 1) - 1) * 5);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
     public function create()
     {
-        $permission = Permission::get();
-        return view('core.roles.create',compact('permission'));
+        $modules = DB::table('tb_module')->where('activate', 1)->get();
+        $permissions = DB::table('permissions')->get();
+        return view('core.roles.create', compact('modules', 'permissions'));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
     public function store(Request $request)
     {
-        $this->validate($request, [
+        $request->validate([
             'name' => 'required|unique:roles,name',
             'permission' => 'required',
         ]);
-
-        $role = Role::create(['name' => $request->input('name')]);
-
-        \DB::table('role_has_permissions')->where('role_id', $role->id)->delete();
-        foreach ($request->input('permission') as $permission) {
-            \DB::table('role_has_permissions')->insert([
-                'role_id' => $role->id,
-                'permission_id' => $permission,
-            ]);
-        }
-
-//        $role->syncPermissions($request->input('permission'));
-
-        return redirect()->route('roles.index')
-            ->with('success','Role created successfully');
-    }
-    /**
-     * Display the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function show($id)
-    {
-        $role = Role::find($id);
-        $rolePermissions = Permission::join("role_has_permissions","role_has_permissions.permission_id","=","permissions.id")
-            ->where("role_has_permissions.role_id",$id)
-            ->get();
-
-        return view('core.roles.show',compact('role','rolePermissions'));
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function edit($id)
-    {
-        $role = Role::find($id);
-        $permission = Permission::get();
-        $rolePermissions = DB::table("role_has_permissions")->where("role_has_permissions.role_id",$id)
-            ->pluck('role_has_permissions.permission_id','role_has_permissions.permission_id')
-            ->all();
-
-        return view('core.roles.edit',compact('role','permission','rolePermissions'));
-    }
-
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function update(Request $request, $id)
-    {
-        $this->validate($request, [
-            'name' => 'required',
-            'permission' => 'required',
+        $isAdmin = $request->has('is_admin') ? true : false;
+        $roleId = DB::table('roles')->insertGetId([
+            'name' => $request->input('name'),
+            'is_admin'=> $isAdmin,
+            'guard_name' => 'web',
+            'created_at' => now()
         ]);
 
-        $role = Role::find($id);
-        $role->name = $request->input('name');
-        $role->save();
+        foreach ($request->input('permission') as $permissionId) {
+            $existing = DB::table('role_has_permissions')
+                ->where('role_id', $roleId)
+                ->where('permission_id', $permissionId)
+                ->exists();
 
-        \DB::table('role_has_permissions')->where('role_id', $id)->delete();
-        foreach ($request->input('permission') as $permission) {
-            \DB::table('role_has_permissions')->insert([
-                'role_id' => $id,
-                'permission_id' => $permission,
-            ]);
+            if (!$existing) {
+                DB::table('role_has_permissions')->insert([
+                    'role_id' => $roleId,
+                    'permission_id' => $permissionId,
+                ]);
+            }
         }
 
+
+        $permissionsData = $request->input('permissions');
+
+        if (!is_array($permissionsData)) {
+            $permissionsData = [];
+        }
+
+        if (empty($permissionsData)) {
+            DB::table('cms_privileges_roles')->insert([
+                'id_cms_privileges' => $roleId,
+                'id_cms_moduls' => null,
+                'is_visible' => 0,
+                'is_create' => 0,
+                'is_read' => 0,
+                'is_edit' => 0,
+                'is_delete' => 0,
+                'created_at' => now(),
+            ]);
+        } else {
+            foreach ($permissionsData as $moduleId => $permissions) {
+                DB::table('cms_privileges_roles')->insert([
+                    'id_cms_privileges' => $roleId,
+                    'id_cms_moduls' => $moduleId,
+                    'is_visible' => isset($permissions['view']) ? 1 : 0,
+                    'is_create' => isset($permissions['create']) ? 1 : 0,
+                    'is_read' => isset($permissions['read']) ? 1 : 0,
+                    'is_edit' => isset($permissions['edit']) ? 1 : 0,
+                    'is_delete' => isset($permissions['delete']) ? 1 : 0,
+                    'created_at' => now(),
+                ]);
+            }
+        }
+
+
         return redirect()->route('roles.index')
-            ->with('success','Role updated successfully');
+            ->with('success', 'Role created successfully');
     }
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
+
+
+    public function show($id)
+    {
+
+        $role = DB::table('roles')->where('id', $id)->first();
+        $allPermissions = DB::table('permissions')->get();
+        $rolePermissions = DB::table('permissions')
+            ->join('role_has_permissions', 'permissions.id', '=', 'role_has_permissions.permission_id')
+            ->where('role_has_permissions.role_id', $id)
+            ->get();
+
+        $modules = DB::table('tb_module')
+            ->leftJoin('cms_privileges_roles', 'tb_module.module_id',  '=', 'cms_privileges_roles.id_cms_moduls')
+            ->select('tb_module.module_id', 'tb_module.module_title', 'cms_privileges_roles.*')
+            ->where('cms_privileges_roles.id_cms_privileges', $id)->get();
+
+
+        return view('core.roles.show', compact('role', 'rolePermissions', 'modules', 'allPermissions'));
+    }
+
+    public function edit($id)
+    {
+        $role = DB::table('roles')->where('id', $id)->first();
+        if (!$role) {
+            abort(404, 'Role not found');
+        }
+        $permissions = DB::table('permissions')->get();
+        $rolePermissions = DB::table('role_has_permissions')
+            ->where('role_id', $id)
+            ->pluck('permission_id')
+            ->toArray();
+
+        $allmodules = DB::table('tb_module')->where('activate', 1)->get();
+
+
+        $modules = DB::table('tb_module')
+            ->join('cms_privileges_roles', 'tb_module.module_id',  '=', 'cms_privileges_roles.id_cms_moduls')
+            ->select('tb_module.module_id', 'tb_module.module_title', 'cms_privileges_roles.*')
+            ->where('cms_privileges_roles.id_cms_privileges', $id)->get();
+        $modules = $modules->keyBy('module_id');
+
+        return view('core.roles.edit', compact('role', 'permissions', 'rolePermissions', 'modules', 'allmodules'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'name' => 'required',
+            'permission' => 'required|array',
+        ]);
+
+        $isAdmin = $request->has('is_admin') ? true : false;
+
+        DB::transaction(function () use ($request, $id, $isAdmin) {
+            $role = DB::table('roles')->where('id', $id)->first();
+            if (!$role) {
+                abort(404, 'Role not found');
+            }
+
+            DB::table('roles')->where('id', $id)->update([
+                'name' => $request->input('name'),
+                'is_admin' => $isAdmin,
+                'guard_name' => 'web',
+            ]);
+
+            DB::table('role_has_permissions')->where('role_id', $id)->delete();
+            foreach ($request->input('permission') as $permissionId) {
+                DB::table('role_has_permissions')->insert([
+                    'role_id' => $id,
+                    'permission_id' => $permissionId,
+                ]);
+            }
+
+            $permissionsData = $request->input('permissions', []);
+
+            foreach ($permissionsData as $moduleId => $permissions) {
+                $existing = DB::table('cms_privileges_roles')
+                    ->where('id_cms_privileges', $id)
+                    ->where('id_cms_moduls', $moduleId)
+                    ->first();
+
+                if ($existing) {
+                    DB::table('cms_privileges_roles')
+                        ->where('id_cms_privileges', $id)
+                        ->where('id_cms_moduls', $moduleId)
+                        ->update([
+                            'is_visible' => isset($permissions['view']) ? 1 : 0,
+                            'is_create' => isset($permissions['create']) ? 1 : 0,
+                            'is_read' => isset($permissions['read']) ? 1 : 0,
+                            'is_edit' => isset($permissions['edit']) ? 1 : 0,
+                            'is_delete' => isset($permissions['delete']) ? 1 : 0,
+                        ]);
+                } else {
+                    DB::table('cms_privileges_roles')->insert([
+                        'id_cms_privileges' => $id,
+                        'id_cms_moduls' => $moduleId,
+                        'is_visible' => isset($permissions['view']) ? 1 : 0,
+                        'is_create' => isset($permissions['create']) ? 1 : 0,
+                        'is_read' => isset($permissions['read']) ? 1 : 0,
+                        'is_edit' => isset($permissions['edit']) ? 1 : 0,
+                        'is_delete' => isset($permissions['delete']) ? 1 : 0,
+                    ]);
+                }
+            }
+        });
+
+        return redirect()->route('roles.index')
+            ->with('success', 'Role updated successfully');
+    }
+
+
     public function destroy($id)
     {
-        DB::table("roles")->where('id',$id)->delete();
+        DB::table('roles')->where('id', $id)->delete();
+        DB::table('role_has_permissions')->where('role_id', $id)->delete();
+        DB::table('model_has_roles')->where('role_id', $id)->delete();
+        DB::table('cms_privileges_roles')->where('id_cms_privileges', $id)->delete();
+
         return redirect()->route('roles.index')
-            ->with('success','Role deleted successfully');
+            ->with('success', 'Role deleted successfully');
     }
 }

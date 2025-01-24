@@ -43,11 +43,8 @@
                         <div class="form-group">
                             <label class="control-label customWidthEx text-left">ACTIVE</label>
                             <input type="hidden" name="active" value="0">
-                            <!-- Hidden input to ensure default value -->
                             <label class="switch">
-                                <input type="checkbox" name="active" value="1"
-                                    @if (isset($data) && $data->active == 1) checked @endif>
-                                <span class="slider"></span>
+                                <input type="checkbox" name="active" value="1">
                             </label>
                         </div>
                     </div>

@@ -9,7 +9,7 @@ class PersonInfo
 
     public static function gotPersonID_SGB_REMOTE($data)
     {
-        if (env('IS_IDE', 0) == 1) return json_decode('{"person_id":3121321,"name":"KUNISHEVA MUHABAT PALONCHIEVNA","birth_date":"1990-03-15","sex": 2,"visaNumber":"2878117", "dateVisaOn":"2017-03-31", "dateVisaOff":"2017-05-02", "visaIssuedBy": "Paris"}', true);
+        if (env('IS_IDE', 0) == 1) return json_decode('{"person_id":3121321,"name":"RORANOA ZORO SHISUI","birth_date":"1990-03-15", "visa_id": 17, "dateKPP":"2023-04-28", "kppNumber":2367854, "visaNumber":"2878117", "dateVisaOn":"2017-03-31", "dateVisaOff":"2017-05-02", "visaIssuedBy": "Paris"}', true);
         try {
             $data = json_encode($data, JSON_UNESCAPED_UNICODE);
             $url = "http://10asdasd/insotranec-info";
@@ -33,9 +33,8 @@ class PersonInfo
         $arr = [];
         if (env('IS_IDE', 0) == 1) {
             $arr = [
-                "last_checkin" => ["id" => 263572864, "reg_date" => "2023-04-28 19:31:00", "person_id" => 6040482, "point_code" => "59", "direction_country" => 179, "full_name" => "SABUROVA FARZONA", "birth_date" => "2016-01-01", "sex" => 2, "citizenship" => 179, "document" => "403528102", "date_end_document" => "2025-09-21"
-                ],
-                "last_checkout" => ["id" => 262871109, "reg_date" => "2023-04-23 18:12:49", "person_id" => 6040482, "point_code" => "175", "direction_country" => 179, "full_name" => "SABUROVA FARZONA", "birth_date" => "2016-01-01", "sex" => 2, "citizenship" => 179, "document" => "403528102", "date_end_document" => "2025-09-21"]
+                "last_checkin" => ["id" => 263572864, "reg_date" => "2023-04-28 19:31:00",  "person_id" => 6040482, "point_code" => "59", "direction_country" => 224, "full_name" => "RORANOA ZORO SHISUI",  "sex" => 1, "citizenship" => 224, "document" => "403528102", "date_end_document" => "2025-09-21"],
+                "last_checkout" => ["id" => 262871109, "reg_date" => "2023-04-23 18:12:49", "person_id" => 6040482, "point_code" => "175", "direction_country" => 224, "full_name" => "RORANOA ZORO SHISUI", "sex" => 1, "citizenship" => 224, "document" => "403528102", "date_end_document" => "2025-09-21"]
             ];
             return $arr;
         }

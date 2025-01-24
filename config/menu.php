@@ -17,7 +17,7 @@ return [
     'table_prefix' => 'admin_',
 
     /* you can set your own table names */
-    'table_name_menus' => 'menus',
+    'table_name_menus' => 'menu',
 
     'table_name_items' => 'menu_items',
 

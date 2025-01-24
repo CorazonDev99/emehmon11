@@ -31,7 +31,7 @@
                 </div>
             </form>
         </div>
-
+        <h3 class="text-light pt-4">@yield('header_title', 'Home')</h3>
         <div class="d-flex">
 
             <div class="dropdown d-inline-block d-lg-none ms-2">
@@ -245,7 +245,10 @@
                         <i class="uil uil-unlock-alt font-size-18 align-middle text-muted me-1"></i>
                         <span class="align-middle">Roles</span>
                     </a>
-
+                    <a class="dropdown-item" href="/privileges">
+                        <i class="uil uil-shield-check font-size-18 align-middle text-muted me-1"></i>
+                        <span class="align-middle">Modules</span>
+                    </a>
                     <a class="dropdown-item" href="/permissions">
                         <i class="uil uil-key-skeleton font-size-18 align-middle text-muted me-1"></i>
                         <span class="align-middle">Permissions</span>

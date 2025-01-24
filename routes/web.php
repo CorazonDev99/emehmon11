@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ListokController;
 use App\Http\Controllers\PermissionController;
+use App\Http\Controllers\PrivilegeController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\RoomController;
@@ -35,9 +36,13 @@ Route::middleware('auth')->group(function () {
 });
 require __DIR__ . '/auth.php';
 
+Route::auto('users', UserController::class);
+
 
 Route::group(['middleware' => ['auth']], function () {
     Route::resource('users', UserController::class);
+
+
     Route::resource('roles', RoleController::class);
     Route::resource('permissions', PermissionController::class);
 
@@ -46,6 +51,8 @@ Route::group(['middleware' => ['auth']], function () {
     Route::get('/menu', [MenuController::class, 'index'])->name('menu.index');
     Route::post('/menu/store', [MenuController::class, 'store'])->name('menu.store');
     Route::post('/menu/update-order', [MenuController::class, 'updateOrder'])->name('menu.updateOrder');
+    Route::auto('menu', MenuController::class);
+
     Route::post('/menu/update-sidebar-order', [MenuController::class, 'updateSidebarOrder'])->name('menu.updateSidebarOrder');
 
     Route::get('/register', [RegisterController::class, 'index'])->name('register.index');
@@ -63,6 +70,9 @@ Route::post('/listok/tag', [ListokController::class, 'updateTag'])->name('update
 Route::post('/listok/delete-tag', [ListokController::class, 'deleteTag'])->name('delete-tag');
 Route::post('/listok/extend-visa', [ListokController::class, 'extendVisa'])->name('extend-visa');
 Route::post('/listok/feedback', [ListokController::class, 'feedBack'])->name('listok.feedback');
+Route::post('/privileges/create', [PrivilegeController::class, 'createModule'])->name('privileges.create');
+Route::post('/privileges/delete', [PrivilegeController::class, 'deleteModule'])->name('privileges.delete');
+Route::post('/privileges/edit', [PrivilegeController::class, 'editModule'])->name('privileges.edit');
 
 
 Route::auto('booking', BookingController::class);
@@ -70,6 +80,7 @@ Route::auto('editbooking', EditBookingController::class);
 Route::auto('infobooking', InfoBookingController::class);
 
 
+Route::auto('privileges', PrivilegeController::class);
 Route::auto('listok', ListokController::class);
 Route::auto('rooms', RoomController::class);
 Route::resources([
@@ -116,7 +127,7 @@ Route::post('add-card', function () {
 //})->middleware('auth');
 
 Route::get('/auth-my', function () {
-    $user = User::find(1);
+    $user = User::find(125);
     Auth::login($user);
     //    return redirect('test-form');
     return view('dashboard');

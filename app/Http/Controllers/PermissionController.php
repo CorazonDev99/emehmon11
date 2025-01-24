@@ -3,94 +3,75 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-use Spatie\Permission\Models\Permission;
+use Illuminate\Support\Facades\DB;
 
 class PermissionController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
+
     public function index()
     {
-        $permissions = Permission::all();
+        $permissions = DB::table('permissions')->get();
 
         return view('core.permissions.index', [
             'permissions' => $permissions
         ]);
     }
 
-    /**
-     * Show form for creating permissions
-     *
-     * @return \Illuminate\Http\Response
-     */
+
     public function create()
     {
         return view('core.permissions.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
+
     public function store(Request $request)
     {
         $request->validate([
             'name' => 'required|unique:permissions,name'
         ]);
 
-        Permission::create($request->only('name'));
+        DB::table('permissions')->insert([
+            'name' => $request->input('name'),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
 
         return redirect()->route('permissions.index')
             ->withSuccess(__('Permission created successfully.'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  Permission  $post
-     * @return \Illuminate\Http\Response
-     */
-    public function edit(Permission $permission)
+
+    public function edit($id)
     {
+        $permission = DB::table('permissions')->find($id);
+
         return view('core.permissions.edit', [
             'permission' => $permission
         ]);
     }
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  Permission  $permission
-     * @return \Illuminate\Http\Response
-     */
-    public function update(Request $request, Permission $permission)
+
+    public function update(Request $request, $id)
     {
         $request->validate([
-            'name' => 'required|unique:permissions,name,'.$permission->id
+            'name' => 'required|unique:permissions,name,'.$id
         ]);
 
-        $permission->update($request->only('name'));
+        DB::table('permissions')->where('id', $id)->update([
+            'name' => $request->input('name'),
+            'updated_at' => now(),
+        ]);
 
         return redirect()->route('permissions.index')
             ->withSuccess(__('Permission updated successfully.'));
     }
 
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  \App\Models\Post  $post
-     * @return \Illuminate\Http\Response
-     */
-    public function destroy(Permission $permission)
+
+    public function destroy($id)
     {
-        $permission->delete();
+        DB::table('permissions')->where('id', $id)->delete();
+        DB::table('role_has_permissions')->where('permission_id', $id)->delete();
+        DB::table('model_has_permissions')->where('permission_id', $id)->delete();
 
         return redirect()->route('permissions.index')
             ->withSuccess(__('Permission deleted successfully.'));

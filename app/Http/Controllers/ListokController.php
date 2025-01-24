@@ -29,7 +29,7 @@ class ListokController extends Controller
     private $data = [];
     public function index()
     {
-        $grp_id = \Session::get('rid', \Auth::user()->roles->pluck('id')->first()) * 1;
+        $grp_id = \Session::get('rid', \Auth::user()->roles->pluck('id')->first());
         $this->data['showHotel'] = $grp_id == 6 || $grp_id == 8;
 
         $children = \DB::table('tb_children')
@@ -43,23 +43,62 @@ class ListokController extends Controller
             ->get();
 
         $this->data['children'] = $children;
-        $rooms = \DB::table('tb_listok')
-            ->join('tb_listok_rooms', 'tb_listok.id', '=', 'tb_listok_rooms.id_reg')
-            ->join('tb_rooms', 'tb_listok_rooms.id_room', '=', 'tb_rooms.id')
+        $rooms = \DB::table('tb_rooms')
+            ->join('tb_listok_rooms', 'tb_listok_rooms.id_room', '=', 'tb_rooms.id')
             ->join('tb_room_types', 'tb_room_types.id', '=', 'tb_rooms.id_room_type')
             ->where('tb_rooms.active', "1")
-            ->where('tb_rooms.id_hotel', 12)
-            ->whereRaw('tb_listok.id_hotel = tb_listok_rooms.id_hotel')
-            ->distinct()
-            ->select('tb_rooms.id as room_id', 'tb_rooms.room_numb as room_number', 'tb_room_types.ru as room_type')
+            ->where('tb_rooms.id_hotel', session('hid', auth()->user()->id_hotel))
+            ->groupBy('tb_listok_rooms.id_room', 'tb_rooms.id', 'tb_rooms.room_numb', 'tb_room_types.ru', 'tb_rooms.room_floor')
+            ->select('tb_rooms.id as room_id', 'tb_rooms.room_numb as room_number', 'tb_room_types.ru as room_type', 'tb_rooms.room_floor', 'tb_rooms.beds', 'tb_rooms.tag',  \DB::raw('count(tb_listok_rooms.id_reg) as living_room'))
             ->get();
 
         $hotels = \DB::table('tb_hotels')->select(['id', 'name', 'id_region'])->get();
         $regions = \DB::table('tb_region')->select(['id', 'name'])->get();
         $ctzns = \DB::table('tb_citizens')->select(['id', 'SP_NAME04 as name'])->get();
 
+        $feedbacks = \DB::table('tb_listok')
+            ->leftJoin('tb_feedbacks', 'tb_feedbacks.pspNumber', '=', 'tb_listok.passportNumber')
+            ->leftJoin('tb_hotels', 'tb_listok.id_hotel', '=', 'tb_hotels.id')
+            ->leftJoin('tb_users', 'tb_listok.entry_by', '=', 'tb_users.id')
+            ->select(
+                'tb_feedbacks.created_at',
+                'tb_feedbacks.pspNumber',
+                'tb_feedbacks.text',
+                'tb_feedbacks.inBlack',
+                'tb_hotels.name as htl',
+                \DB::raw("CONCAT(UPPER(LEFT(tb_users.first_name, 1)), '. ', tb_users.last_name) as adm")
+            )->distinct()
+            ->whereNull('tb_listok.dateVisitOff')
+            ->get();
 
-        return view('listok.index', $this->data, compact('rooms', 'hotels', 'regions', 'ctzns'));
+        $room_history = \DB::table('tb_listok')
+            ->Join('tb_room_history', 'tb_room_history.id_reg', '=', 'tb_listok.id')
+            ->Join('tb_hotels', 'tb_room_history.id_hotel', '=', 'tb_hotels.id')
+            ->Join('tb_users', 'tb_room_history.entry_by', '=', 'tb_users.id')
+            ->select(
+                'tb_room_history.id_reg',
+                'tb_room_history.created_at',
+                'tb_room_history.events',
+                'tb_hotels.name as htl',
+                \DB::raw("CONCAT(UPPER(LEFT(tb_users.first_name, 1)), '. ', tb_users.last_name) as adm")
+            )
+            ->whereNull('tb_listok.dateVisitOff')
+            ->get();
+
+
+        $bron_room = \DB::table('tb_listok')
+            ->leftJoin('bookings', 'bookings.id', '=', 'tb_listok.book_id')
+            ->Join('tb_hotels', 'bookings.hotel_id', '=', 'tb_hotels.id')
+            ->select(
+                'bookings.id',
+                \DB::raw("CONCAT(DATE_FORMAT(bookings.date_from, '%d.%m.%Y'), ' - ', DATE_FORMAT(bookings.date_to, '%d.%m.%Y')) AS bron_date"),
+                'bookings.contact_phone AS phone_number',
+                'bookings.org_name',
+                'tb_hotels.name as htl',
+            )->get();
+
+
+        return view('listok.index', $this->data, compact('rooms', 'hotels', 'regions', 'ctzns', 'feedbacks', 'room_history', 'bron_room'));
     }
 
 
@@ -73,33 +112,31 @@ class ListokController extends Controller
 
     public function create()
     {
-        $rooms = \DB::table('tb_listok')
-            ->join('tb_listok_rooms', 'tb_listok.id', '=', 'tb_listok_rooms.id_reg')
-            ->join('tb_rooms', 'tb_listok_rooms.id_room', '=', 'tb_rooms.id')
+        $rooms = \DB::table('tb_rooms')
+            ->join('tb_listok_rooms', 'tb_listok_rooms.id_room', '=', 'tb_rooms.id')
             ->join('tb_room_types', 'tb_room_types.id', '=', 'tb_rooms.id_room_type')
-            ->where('tb_rooms.active', "0")
-            ->where('tb_rooms.id_hotel', 12)
-            ->whereRaw('tb_listok.id_hotel = tb_listok_rooms.id_hotel')
-            ->distinct()
-            ->select('tb_rooms.id as room_id', 'tb_rooms.room_numb as room_number', 'tb_room_types.ru as room_type')
+            ->where('tb_rooms.active', "1")
+            ->where('tb_rooms.id_hotel', session('hid', auth()->user()->id_hotel))
+            ->groupBy('tb_listok_rooms.id_room', 'tb_rooms.id', 'tb_rooms.room_numb', 'tb_room_types.ru', 'tb_rooms.room_floor')
+            ->select('tb_rooms.id as room_id', 'tb_rooms.room_numb as room_number', 'tb_room_types.ru as room_type', 'tb_rooms.beds', 'tb_rooms.room_floor', 'tb_rooms.tag',  \DB::raw('count(tb_listok_rooms.id_reg) as living_room'))
             ->get();
         return view('listok.form', compact('rooms'));
     }
 
 
-    public function show()
+    public function show(Request $request)
     {
-        $rooms = \DB::table('tb_listok')
-            ->join('tb_listok_rooms', 'tb_listok.id', '=', 'tb_listok_rooms.id_reg')
-            ->join('tb_rooms', 'tb_listok_rooms.id_room', '=', 'tb_rooms.id')
+        $book_id = $request->query('id');
+        $rooms = \DB::table('tb_rooms')
+            ->join('tb_listok_rooms', 'tb_listok_rooms.id_room', '=', 'tb_rooms.id')
             ->join('tb_room_types', 'tb_room_types.id', '=', 'tb_rooms.id_room_type')
-            ->where('tb_rooms.active', "0")
-            ->where('tb_rooms.id_hotel', 12)
-            ->whereRaw('tb_listok.id_hotel = tb_listok_rooms.id_hotel')
-            ->distinct()
-            ->select('tb_rooms.id as room_id', 'tb_rooms.room_numb as room_number', 'tb_room_types.ru as room_type')
+            ->where('tb_rooms.active', "1")
+            ->where('tb_rooms.id_hotel', session('hid', auth()->user()->id_hotel))
+            ->groupBy('tb_listok_rooms.id_room', 'tb_rooms.id', 'tb_rooms.room_numb', 'tb_room_types.ru', 'tb_rooms.room_floor')
+            ->select('tb_rooms.id as room_id', 'tb_rooms.room_numb as room_number', 'tb_room_types.ru as room_type', 'tb_rooms.beds', 'tb_rooms.room_floor', 'tb_rooms.tag',  \DB::raw('count(tb_listok_rooms.id_reg) as living_room'))
             ->get();
-        return view('listok.show', compact('rooms'));
+
+        return view('listok.show', compact('rooms', 'book_id'));
     }
 
 
@@ -121,17 +158,17 @@ class ListokController extends Controller
         $tag = $request->get('tag', '');
 
         $d = \DB::table('tb_listok')
-            ->leftjoin('tb_feedbacks', 'tb_feedbacks.pspNumber', '=', 'tb_listok.passportNumber')
-            ->join('tb_passporttype', 'tb_listok.id_passporttype', '=', 'tb_passporttype.id')
-            ->join('tb_guests', 'tb_listok.id_guest', '=', 'tb_guests.id')
-            ->join('tb_visittype', 'tb_listok.id_visitType', '=', 'tb_visittype.id')
-            ->join('tb_users', 'tb_listok.entry_by', '=', 'tb_users.id')
-            ->join('tb_citizens', 'tb_listok.id_citizen', '=', 'tb_citizens.id')
+            ->leftJoin('tb_passporttype', 'tb_listok.id_passporttype', '=', 'tb_passporttype.id')
+            ->leftJoin('tb_guests', 'tb_listok.id_guest', '=', 'tb_guests.id')
+            ->leftJoin('tb_visittype', 'tb_listok.id_visitType', '=', 'tb_visittype.id')
+            ->leftJoin('tb_users', 'tb_listok.entry_by', '=', 'tb_users.id')
+            ->leftJoin('tb_citizens', 'tb_listok.id_citizen', '=', 'tb_citizens.id')
             ->leftJoin('tb_visa', 'tb_visa.id', '=', 'tb_listok.id_visa')
-            ->join('tb_hotels', 'tb_users.id_hotel', '=', 'tb_hotels.id')
-            ->join('tb_region', 'tb_region.id', '=', 'tb_hotels.id_region')
+            ->leftJoin('tb_hotels', 'tb_users.id_hotel', '=', 'tb_hotels.id')
+            ->leftJoin('tb_region', 'tb_region.id', '=', 'tb_hotels.id_region')
             ->selectRaw(
-                "'' AS `empty`,
+                "DISTINCT
+                '' AS `empty`,
                 tb_listok.id,
                 tb_listok.regNum,
                 tb_listok.propiska AS room,
@@ -139,7 +176,9 @@ class ListokController extends Controller
                 tb_citizens.SP_NAME03 AS ctzn,
                 tb_listok.wdays,
                 tb_listok.payed,
+                tb_listok.paytp,
                 tb_listok.tag,
+                tb_listok.id_hotel,
                 tb_listok.surname,
                 tb_listok.firstname,
                 tb_users.last_name,
@@ -154,26 +193,26 @@ class ListokController extends Controller
                 DATE_FORMAT(tb_listok.datebirth, '%d-%m-%Y') AS datebirth,
                 tb_listok.amount,
                 tb_visa.name AS tb_visa,
-                tb_listok.visanumber AS tb_visanm,
+                tb_listok.visaNumber AS tb_visanm,
                 tb_listok.PassportIssuedBy,
                 tb_listok.datePassport,
                 CONCAT(tb_listok.passportSerial, tb_listok.passportNumber) AS passport_full,
-                tb_listok.datevisaon AS tb_visafrom,
-                tb_listok.datevisaoff AS tb_visato,
-                tb_listok.kppnumber,
-                tb_listok.datekpp,
-                tb_feedbacks.text,
+                tb_listok.dateVisaOn AS tb_visafrom,
+                tb_listok.dateVisaOff AS tb_visato,
+                tb_listok.kppNumber,
+                tb_listok.dateKPP,
                 tb_listok.id_citizen,
                 tb_listok.passportSerial,
                 tb_listok.passportNumber,
                 tb_listok.entry_by,
-                DATEDIFF(NOW(), tb_listok.datevisaoff) AS expired"
+                tb_listok.sex,
+                tb_listok.book_id,
+                tb_listok.updated_at,
+                tb_listok.pinfl"
+
             )
-            ->where(function($query) {
-                $query->whereNull('tb_listok.datevisitoff')
-                      ->orWhereRaw('DATEDIFF(NOW(), tb_listok.datevisitoff) >= 0');
-            })
-            ->orderBy("tb_listok.id");
+            ->whereNull('tb_listok.dateVisitOff');
+
 
         #Глобальный поиск
         if ($request->filled('surname')) {
@@ -212,14 +251,13 @@ class ListokController extends Controller
         }
 
 
-
         #Быстрый поиск
         if ($regNum) {
-            $d->where('tb_listok.regNum', 'LIKE', "$regNum%");
+            $d->where('tb_listok.regNum', '=', $regNum);
         }
 
         if ($room) {
-            $d->where('tb_listok.propiska', 'LIKE', "$room%");
+            $d->where('tb_listok.propiska', '=', "$room");
         }
 
         if ($tag) {
@@ -235,7 +273,7 @@ class ListokController extends Controller
                         <span style="color:transparent;font-size:1px">' . $row->ctzn . '</span>';
             })
             ->editColumn('amount', function ($row) {
-                return number_format($row->amount, 2, ',', ' ');
+                return number_format($row->amount, 2, '.', ' ');
             })
             ->rawColumns(['ctz'])
             ->make(true);
@@ -353,7 +391,7 @@ class ListokController extends Controller
         $tb_listok = \DB::table('tb_listok')->insertGetId($data);
 
         $data['regnum'] = $tb_listok . '-' . $data['id_hotel'] . '-' . date('Y');
-        \DB::table('tb_listok')->where('id', $tb_listok)->update(['regnum' => $data['regnum']]);
+        \DB::table('tb_listok')->where('id', $tb_listok)->update(['regnum' => $data['regnum'], 'updated_at' => now()]);
         if ($tb_listok) {
             $room = $request->input('room');
             \DB::table('tb_listok_rooms')->insert([
@@ -419,15 +457,36 @@ class ListokController extends Controller
     public function postCheckout(Request $request)
     {
         $ids = $request->input('ids', []);
-
+        $payment = $request->input('payment');
+        $paytype = $request->input('paytype');
+        $comment = $request->input('comment');
+        $inblack = $request->input('inblack');
         if (empty($ids)) {
             return response()->json(['status' => 'error', 'message' => 'Нет выбранных элементов для Checkout.'], 400);
         }
+        if ($paytype === null || $payment === null) {
+            return response()->json(['status' => 'error', 'message' => 'Необходимо написать сумму!']);
+        }
+
+
+        \DB::table('tb_listok')
+            ->whereIn('tb_listok.id', $ids)
+            ->update([
+                'paytp' => $paytype,
+                'amount' => $payment,
+                'updated_at' => now(),
+            ]);
+
+
+//        \DB::table('tb_feedbacks')
+//            ->insert(['tb_feedbacks.text' => $comment, 'tb_feedbacks.inblack' => $inblack]);
+
 
 
         foreach ($ids as $id) {
             \DB::table('tb_listok')->where('id', $id)->update([
                 'datevisitoff' => now()->subDay()->format('Y-m-d H:i:s'),
+                'updated_at' => now()
             ]);
 
 
@@ -499,10 +558,7 @@ class ListokController extends Controller
                         'pinfl' => $tb_listok->pinfl
                     ];
 
-
-
-                    $this->client->insert('tb_listok_checkout', [$checkoutData]);
-
+//                    $this->client->insert('tb_listok_checkout', [$checkoutData]);
 
                     \DB::table('tb_listok_rooms')
                         ->where('id_reg', $tb_listok->id)
@@ -521,7 +577,6 @@ class ListokController extends Controller
                 \DB::table('clickhouse_failed')->insert([$failedData]);
             }
         }
-
         return response()->json(['status' => 'success', 'message' => 'Checkout успешно выполнен для выбранных элементов.']);
     }
 
@@ -555,6 +610,9 @@ class ListokController extends Controller
             'lastname' => $PersonID_SGB['lastname'],
             'birth_date' => $PersonID_SGB['birth_date'],
             'visaNumber' => $PersonID_SGB['visaNumber'],
+            'visa_id' => $PersonID_SGB['visa_id'],
+            'dateKPP' => $PersonID_SGB['dateKPP'],
+            'kppNumber' => $PersonID_SGB['kppNumber'],
             'dateVisaOn' => $PersonID_SGB['dateVisaOn'],
             'dateVisaOff' => $PersonID_SGB['dateVisaOff'],
             'visaIssuedBy' => $PersonID_SGB['visaIssuedBy'],
@@ -573,6 +631,7 @@ class ListokController extends Controller
 
     public function savedata(Request $request)
     {
+        $id_region = \DB::table('tb_hotels')->select('id_region')->where('id', auth()->user()->id_hotel)->first();
 
         $data = [
             'pinfl' => $request->get('pinfl'),
@@ -581,12 +640,12 @@ class ListokController extends Controller
             'firstname' => $request->get('firstname'),
             'lastname' => $request->get('lastname'),
             'id_country' => $request->get('id_country'),
-            'id_countryFrom' => 1,
-            'id_passporttype' => 1,
+            'id_countryFrom' => $request->get('id_countryfrom'),
+            'id_passporttype' => $request->get('id_passporttype'),
             'dateVisitOn' => $request->get('datevisiton'),
-            'regNum' => '000000',
+//            'regNum' => '000000',
             'datebirth' => $request->get('datebirth'),
-            'id_citizen' => 1,
+            'id_citizen' => $request->get('id_countryfrom'),
             'propiska' => $request->get('propiska'),
             'sex' => $request->get('sex'),
             'id_visitType' => $request->get('id_visitType'),
@@ -603,21 +662,43 @@ class ListokController extends Controller
             'dateKPP' => $request->get('dateKPP'),
             'id_guest' => $request->get('id_guest'),
             'amount' => $request->get('amount'),
-            'entry_by' => 1,
+            'entry_by' => auth()->user()->id,
             'created_at' => now(),
             'wdays' => $request->get('wdays'),
-            'lived_days' => 2,
-            'out_by' => 1,
+            'lived_days' => $request->get('lived_days'),
             'payed' => $request->get('payed'),
-            'id_hotel' => 1,
-            'id_region' => 1,
-            'tag' => '',
-            'paytp' => '1',
-            'id_person' => 1,
+            'id_hotel' => auth()->user()->id_hotel,
+            'id_region' => $id_region->id_region,
+            'id_person' => $request->get('id_person'),
+            'book_id' => $request->get('book_id'),
         ];
 
-        if ($data) {
-            \DB::table('tb_listok')->insert($data);
+        $id_listok = \DB::table('tb_listok')->insertGetId($data);
+
+
+        $children = $request->get('childrens', []);
+        if ($children){
+            foreach ($children as $child) {
+                if (!empty($child['name']) || !empty($child['gender']) || !empty($child['birthday'])) {
+                    $formattedBirthday = null;
+                    if (!empty($child['birthday'])) {
+                        $formattedBirthday = \DateTime::createFromFormat('d/m/Y', $child['birthday'])->format('Y-m-d');
+                    }
+
+                    $child_data = [
+                        'name' => $child['name'],
+                        'gender' => $child['gender'],
+                        'dateBirth' => $formattedBirthday,
+                        'id_listok' => $id_listok,
+                    ];
+
+                    \DB::table('tb_children')->insert($child_data);
+                }
+            }
+        }
+
+
+        if ($id_listok) {
             session()->flash('success', 'Данные успешно сохранены');
             return response()->json(['status' => 'success']);
         } else {
@@ -673,7 +754,8 @@ class ListokController extends Controller
                 'dateKPP' => $data['kpp_date'],
                 'paytp' => $data['payment_status'],
                 'amount' => $data['payment_amount'],
-                'id_guest' => $data['id_guest']
+                'id_guest' => $data['id_guest'],
+                'updated_at' => now(),
             ]);
 
         if ($affected) {
@@ -688,8 +770,12 @@ class ListokController extends Controller
 
     public function moveToRoom(Request $request)
     {
-        $guestIds = $request->input('guest_ids');
+        $guestIds = $request->input('guest_ids', []);
+        $hotelIds = $request->input('hotel_ids', []);
+        $entryBys = $request->input('entry_bys', []);
+        $oldRooms = $request->input('old_room_numbers', []);
         $newRoom = $request->input('room_number');
+        $guests = $request->input('guests', []);
 
         if (empty($guestIds) || !$newRoom) {
             return response()->json([
@@ -700,7 +786,27 @@ class ListokController extends Controller
 
         \DB::table('tb_listok')
             ->whereIn('id', $guestIds)
-            ->update(['propiska' => $newRoom]);
+            ->update(['propiska' => $newRoom, 'updated_at' => now()]);
+
+        $roomHistoryData = [];
+        foreach ($guestIds as $index => $guestId) {
+            $roomHistoryData[] = [
+                'id_reg' => $guestId,
+                'id_hotel' => $hotelIds[$index] ?? null,
+                'entry_by' => $entryBys[$index] ?? null,
+                'events' => sprintf(
+                    "%s changed room number from %s to %s",
+                    $guests[$index] ?? 'Guest',
+                    $oldRooms[$index] ?? 'Unknown',
+                    $newRoom
+                ),
+                'created_at' => now(),
+            ];
+        }
+
+        if (!empty($roomHistoryData)) {
+            \DB::table('tb_room_history')->insert($roomHistoryData);
+        }
 
         return response()->json([
             'status' => 'success',
@@ -708,12 +814,15 @@ class ListokController extends Controller
         ]);
     }
 
+
+
     public function statusPayment(Request $request)
     {
         $guestIds = $request->input('guest_ids');
+        $newpaymentStatus = $request->input('paymentStatus');
         $newpayment = $request->input('payment');
 
-        if (empty($guestIds) || !$newpayment) {
+        if (empty($guestIds) || $newpayment == null || empty($newpaymentStatus)) {
             return response()->json(['status' => 'error', 'message' => 'Необходимо написать сумму!']);
         }
 
@@ -721,7 +830,7 @@ class ListokController extends Controller
         try {
             \DB::table('tb_listok')
             ->whereIn('id', $guestIds)
-            ->update(['amount' => $newpayment]);
+            ->update(['payed' => $newpaymentStatus,'amount' => $newpayment, 'updated_at' => now()]);
 
             return response()->json(['status' => 'success', 'message' => 'Успешно обновлено!.']);
         } catch (\Exception $e) {
@@ -749,7 +858,7 @@ class ListokController extends Controller
         try {
             \DB::table('tb_listok')
                 ->whereIn('id', $guestIds)
-                ->update(['tag' => $tag]);
+                ->update(['tag' => $tag, 'updated_at' => now()]);
 
             return response()->json([
                 'success' => true,
@@ -774,7 +883,7 @@ class ListokController extends Controller
 
         \DB::table('tb_listok')
             ->whereIn('id', $guestIds)
-            ->update(['tag' => '']);
+            ->update(['tag' => '', 'updated_at' => now()]);
 
         return response()->json(['success' => true, 'message' => 'Теги успешно удалены.']);
     }
@@ -794,6 +903,7 @@ class ListokController extends Controller
             ->update([
                 'dateVisaOn' => $request->dateVisaOn,
                 'dateVisaOff' => $request->dateVisaOff,
+                'updated_at' => now(),
             ]);
 
         return response()->json(['success' => true]);
@@ -812,26 +922,18 @@ class ListokController extends Controller
             'created_at' => now(),
         ];
 
-        $exists = \DB::table('tb_feedbacks')
-            ->where('id_citizen', $request->id_citizen)
-            ->where('pspSerial', $request->passportSerial)
-            ->where('pspNumber', $request->passportNumber)
-            ->exists();
+        \DB::table('tb_feedbacks')->insert($data);
 
-        if ($exists) {
-            \DB::table('tb_feedbacks')
-                ->where('id_citizen', $request->id_citizen)
-                ->where('pspSerial', $request->passportSerial)
-                ->where('pspNumber', $request->passportNumber)
-                ->update($data);
-
-            return response()->json(['success' => true, 'message' => 'Отзыв успешно обновлён!']);
-        } else {
-            \DB::table('tb_feedbacks')->insert($data);
-
-            return response()->json(['success' => true, 'message' => 'Отзыв успешно добавлен!']);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Отзыв успешно добавлен!',
+            'data' => [
+                'created_at' => $data['created_at'],
+                'feedback' => $data['text'],
+            ],
+        ]);
     }
+
 }
 
 

@@ -1,45 +1,78 @@
 @extends('layouts.app')
-
+@section('script')
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        function confirmDelete(roleId) {
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "You won't be able to revert this!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, delete it!',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById(`delete-form-${roleId}`).submit();
+                }
+            });
+        }
+    </script>
+@endsection
+@section('header_title', 'Roles')
 @section('content')
-    <div class="container">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between">
-                <h2>Role Management</h2>
-                <a class="btn btn-success" href="{{ route('roles.create') }}"> Create New Role </a>
+    <div class="container mt-4">
+        <div class="card shadow-lg">
+            <div class="card-header d-flex justify-content-between align-items-center bg-gradient-info text-white">
+                <h2 class="mb-0 d-flex align-items-center">
+                    <i class="fas fa-users-cog me-2"></i>Roles
+                </h2>
+                <a class="btn btn-success btn-sm" href="{{ route('roles.create') }}">
+                    <i class="fas fa-plus-circle me-2"></i>Create New Role
+                </a>
             </div>
             <div class="card-body">
-
                 @if ($message = Session::get('success'))
-                    <div class="alert alert-success">
-                        <p>{{ $message }}</p>
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <strong>Success!</strong> {{ $message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 @endif
 
-                <table class="table table-bordered">
+                <table class="table dataTable row-border table-hover table-striped">
+                    <thead class="bg-gradient-info">
                     <tr>
-                        <th>No</th>
-                        <th>Name</th>
-                        <th width="280px">Action</th>
+                        <th><i class="fas fa-cogs me-2"></i>Role Name</th>
+                        <th scope="col" width="30%"><i class="fas fa-shield-alt me-2"></i>Guard</th>
+                        <th width="280px" class="text-center"><i class="fas fa-tools me-2"></i>Action</th>
                     </tr>
+                    </thead>
+                    <tbody>
                     @foreach ($roles as $key => $role)
                         <tr>
-                            <td>{{ ++$i }}</td>
-                            <td>{{ $role->name }}</td>
-                            <td>
-                                <a class="btn btn-info" href="{{ route('roles.show',$role->id) }}">Show</a>
-                                <a class="btn btn-primary" href="{{ route('roles.edit',$role->id) }}">Edit</a>
+                            <td class="fw-bold">{{ $role->name }}</td>
+                            <td>{{ $role->guard_name }}</td>
+                            <td class="d-flex justify-content-start gap-3">
+                                <a class="btn btn-outline-info btn-sm" href="{{ route('roles.show', $role->id) }}">
+                                    <i class="fas fa-eye me-1"></i> Show
+                                </a>
+                                <a class="btn btn-outline-warning btn-sm" href="{{ route('roles.edit', $role->id) }}">
+                                    <i class="fas fa-edit me-1"></i> Edit
+                                </a>
 
-                                <form action="{{ route('roles.destroy', $role->id) }}" method="POST" style="display:inline">
+                                <form id="delete-form-{{ $role->id }}" action="{{ route('roles.destroy', $role->id) }}" method="POST" style="display:inline">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="btn btn-outline-danger">Удалить</button>
+                                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="confirmDelete({{ $role->id }})">
+                                        <i class="fas fa-trash-alt me-1"></i> Delete
+                                    </button>
                                 </form>
                             </td>
                         </tr>
                     @endforeach
+                    </tbody>
                 </table>
-
-
             </div>
         </div>
     </div>

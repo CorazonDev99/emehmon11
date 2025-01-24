@@ -1,0 +1,66 @@
+
+body{
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+}
+@font-face {
+    font-family: 'Roboto-bold';
+    src: local('Roboto Bold'), local('Roboto-Bold'), url('../fonts/Robotobold.woff2') format('woff2'), url('../fonts/Robotobold.woff') format('woff'), url('../fonts/Robotobold.ttf') format('truetype');
+    font-weight: 700;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'Roboto';
+    src: local('Roboto'), local('Roboto'), url('../fonts/Roboto.woff2') format('woff2'), url('../fonts/Roboto.woff') format('woff'), url('../fonts/Roboto.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+}
+.d-flex{
+    display: flex;
+}
+.container-form{
+    width: 8.5cm;
+    height: auto;
+    max-height: 11cm;
+    max-width: 8.5cm;
+    /* padding: 0 1.5cm 0 1.5cm; */
+    margin: 0.5cm;
+}
+tr, td{
+    padding: 0;
+    margin: 0;
+}
+TABLE {
+    border-collapse: collapse;
+}
+.mvd{
+    width: 2.5cm;
+    padding: 0.1cm;
+}
+.paragraph{
+    padding: 0;
+    line-height: 1px;
+}
+.QrCode{
+    width: 1.3cm;
+    position: absolute;
+    margin-left: 4.1cm;
+    margin-top: -.4cm;
+}
+.justify{
+    justify-content: space-between;
+}
+p{
+    font-size: 11px;
+    margin-left: 0.1cm;
+    font-family: 'Roboto';
+}
+.text{
+    font-size: 11px;
+    padding-left: 0.1cm;
+    font-family: 'Roboto' !important;
+}
+.bold-text{
+    font-family: 'Roboto-bold';
+}

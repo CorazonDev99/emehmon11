@@ -1,54 +1,92 @@
 <?php
+
 namespace App\Http\Controllers;
-use App\Models\Menu;
-use App\Models\Role;
+
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class MenuController extends Controller
 {
     public function index()
     {
-        $topMenus = Menu::where('parent_id', 0)->where('position', 'top')->with('children')->orderBy('ordering')->get();
-        $sidebarMenus = Menu::where('parent_id', 0)->where('position', 'sidebar')->with('children')->orderBy('ordering')->get();
-        $roles = Role::all();
-        return view('core.menus.index', compact('topMenus', 'sidebarMenus', 'roles'));
+        $topMenus = $this->getMenuHierarchy('top');
+        $modules = DB::table('tb_module')->where('activate', 1)->get();
+        $menus = DB::table('tb_menu')->get();
+
+        return view('core.menu.index', compact('topMenus', 'menus', 'modules'));
     }
 
+    private function getMenuHierarchy($position)
+    {
+        $menus = DB::table('tb_menu')
+            ->where('position', $position)
+            ->orderBy('ordering')
+            ->get();
+
+        return $this->buildHierarchy($menus);
+    }
+
+    private function buildHierarchy($menus, $parentId = 0)
+    {
+        // Рекурсивно строим иерархию меню
+        $result = [];
+        foreach ($menus as $menu) {
+            if ($menu->parent_id == $parentId) {
+                $children = $this->buildHierarchy($menus, $menu->menu_id);
+                if (count($children) > 0) {
+                    $menu->children = $children;
+                } else {
+                    $menu->children = [];
+                }
+                $result[] = $menu;
+            }
+        }
+        return $result;
+    }
 
     public function store(Request $request)
     {
-        $minOrder = Menu::min('ordering');
+        $menuName = $request->input('menu_name');
+        $menuType = $request->input('menu_type');
+        $url = $request->input('url');
+        $menuIcons = $request->input('menu_icons');
+        $active = $request->input('active');
+        $module = $request->input('module');
 
-        $newOrder = $minOrder !== null ? $minOrder - 1 : 1;
 
-        $menu = new Menu();
-        $menu->menu_name = $request->input('menu_name');
-        $menu->menu_type = $request->input('menu_type');
-        $menu->url = $request->input('url');
-        $menu->position = $request->input('position');
-        $menu->menu_icons = $request->input('menu_icons');
-        $menu->active = $request->input('active');
-        $menu->access_data = json_encode($request->input('access'));
-        $menu->ordering = $newOrder;
-        $menu->parent_id = 0;
+        $newOrder = DB::table('tb_menu')
+                ->where('position', 'top')
+                ->max('ordering') + 1;
 
-        $menu->save();
+        DB::table('tb_menu')->insert([
+            'entry_by' => auth()->user()->id,
+            'menu_name' => $menuName,
+            'menu_type' => $menuType,
+            'module' => $module,
+            'url' => $url,
+            'position' => 'top',
+            'menu_icons' => $menuIcons,
+            'active' => $active,
+            'ordering' => $newOrder,
+            'parent_id' => 0,
+        ]);
 
-        return redirect()->route('menu.index');
+        return redirect()->route('menu.index')->with('success', 'Menu item created successfully.');
     }
+
 
     public function updateOrder(Request $request)
     {
-        \Log::info('Received menu order update: ', $request->input('menu'));
-
         try {
-            \DB::transaction(function () use ($request) {
-                $this->saveMenuOrder($request->input('menu'));
+
+            DB::transaction(function () use ($request) {
+                if ($request->has('menu')) {
+                    $this->saveMenuOrder($request->input('menu'));
+                }
             });
 
             return response()->json(['status' => 'Order updated successfully']);
         } catch (\Exception $e) {
-            \Log::error('Error updating menu order: ' . $e->getMessage());
             return response()->json(['error' => 'Failed to update order'], 500);
         }
     }
@@ -56,22 +94,51 @@ class MenuController extends Controller
     private function saveMenuOrder($menuItems, $parentId = 0)
     {
         foreach ($menuItems as $index => $menuItem) {
-            \Log::info("Updating menu item {$menuItem['id']} with parent_id: {$parentId}, ordering: " . ($index + 1));
 
-            $menu = Menu::find($menuItem['id']);
+            $menuType = ($parentId == 0) ? 'external' : 'internal';
 
-            if (!$menu) {
-                throw new \Exception('Menu item not found with ID: ' . $menuItem['id']);
-            }
+            DB::table('tb_menu')
+                ->where('menu_id', $menuItem['id'])
+                ->update([
+                    'parent_id' => $parentId,
+                    'ordering' => $index + 1,
+                    'menu_type' => $menuType,
+                ]);
 
-            $menu->parent_id = $parentId;
-            $menu->ordering = $index + 1;
-            $menu->save();
 
             if (isset($menuItem['children']) && count($menuItem['children']) > 0) {
-                $this->saveMenuOrder($menuItem['children'], $menu->menu_id);
+                $this->saveMenuOrder($menuItem['children'], $menuItem['id']);
             }
         }
     }
-}
 
+
+    public function updateMenu(Request $request)
+    {
+        $menuId = $request->input('menu_id');
+        $menuName = $request->input('menu_name');
+        $menuType = $request->input('menu_type');
+        $url = $request->input('url');
+        $icon = $request->input('menu_icons');
+        $module = $menuType === 'external' ? null : $request->input('module');
+        $isActive = $request->input('active');
+        $entryBy = $request->input('entry_by');
+
+
+        DB::table('tb_menu')
+            ->where('menu_id', $menuId)
+            ->update([
+                'entry_by' => $entryBy,
+                'menu_name' => $menuName,
+                'menu_type' => $menuType,
+                'menu_icons' => $icon,
+                'active' => $isActive,
+                'url' => $url,
+                'module' => $module,
+                'position' => 'top',
+            ]);
+
+        return response()->json(['success' => true, 'message' => 'Меню обновлено успешно.']);
+
+    }
+}
