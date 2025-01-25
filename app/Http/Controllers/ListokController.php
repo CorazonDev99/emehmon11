@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\LogUserActionJob;
 use App\Repository\PersonInfo;
+use App\Services\AuditEvent;
 use ClickHouseDB\Client;
-
+use App\Services\ClickhouseService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Yajra\DataTables\DataTables;
@@ -43,6 +43,8 @@ class ListokController extends Controller
             ->get();
 
         $this->data['children'] = $children;
+
+
         $rooms = \DB::table('tb_rooms')
             ->join('tb_listok_rooms', 'tb_listok_rooms.id_room', '=', 'tb_rooms.id')
             ->join('tb_room_types', 'tb_room_types.id', '=', 'tb_rooms.id_room_type')
@@ -61,7 +63,7 @@ class ListokController extends Controller
             ->leftJoin('tb_hotels', 'tb_listok.id_hotel', '=', 'tb_hotels.id')
             ->leftJoin('tb_users', 'tb_listok.entry_by', '=', 'tb_users.id')
             ->select(
-                'tb_feedbacks.created_at',
+                \DB::raw('DATE_FORMAT(tb_feedbacks.created_at, "%d.%m.%Y %H:%i") AS created_at'),
                 'tb_feedbacks.pspNumber',
                 'tb_feedbacks.text',
                 'tb_feedbacks.inBlack',
@@ -77,7 +79,7 @@ class ListokController extends Controller
             ->Join('tb_users', 'tb_room_history.entry_by', '=', 'tb_users.id')
             ->select(
                 'tb_room_history.id_reg',
-                'tb_room_history.created_at',
+                \DB::raw('DATE_FORMAT(tb_room_history.created_at, "%d.%m.%Y %H:%i") AS created_at'),
                 'tb_room_history.events',
                 'tb_hotels.name as htl',
                 \DB::raw("CONCAT(UPPER(LEFT(tb_users.first_name, 1)), '. ', tb_users.last_name) as adm")
@@ -181,26 +183,28 @@ class ListokController extends Controller
                 tb_listok.id_hotel,
                 tb_listok.surname,
                 tb_listok.firstname,
+                tb_listok.lastname,
                 tb_users.last_name,
                 tb_hotels.name AS htl,
+                tb_hotels.address AS htl_address,
                 tb_region.name AS region,
-                DATE_FORMAT(tb_listok.dateVisitOn, '%d-%m-%Y %H:%i') AS dt,
+                DATE_FORMAT(tb_listok.dateVisitOn, '%d.%m.%Y %H:%i') AS dt,
                 tb_passporttype.name AS passportType,
                 tb_guests.guesttype,
                 tb_visittype.name AS visittype,
                 CONCAT(tb_listok.surname, ' ', tb_listok.firstname, ' ', tb_listok.lastname) AS guest,
                 CONCAT(UPPER(LEFT(tb_users.first_name, 1)), '. ', tb_users.last_name) AS adm,
-                DATE_FORMAT(tb_listok.datebirth, '%d-%m-%Y') AS datebirth,
+                DATE_FORMAT(tb_listok.datebirth, '%d.%m.%Y') AS datebirth,
                 tb_listok.amount,
                 tb_visa.name AS tb_visa,
                 tb_listok.visaNumber AS tb_visanm,
                 tb_listok.PassportIssuedBy,
-                tb_listok.datePassport,
+                DATE_FORMAT(tb_listok.datePassport, '%d.%m.%Y') AS datePassport,
                 CONCAT(tb_listok.passportSerial, tb_listok.passportNumber) AS passport_full,
-                tb_listok.dateVisaOn AS tb_visafrom,
-                tb_listok.dateVisaOff AS tb_visato,
+                DATE_FORMAT(tb_listok.dateVisaOn, '%d.%m.%Y') AS tb_visafrom,
+                DATE_FORMAT(tb_listok.dateVisaOff, '%d.%m.%Y') AS tb_visato,
                 tb_listok.kppNumber,
-                tb_listok.dateKPP,
+                DATE_FORMAT(tb_listok.dateKPP, '%d.%m.%Y') AS dateKPP,
                 tb_listok.id_citizen,
                 tb_listok.passportSerial,
                 tb_listok.passportNumber,
@@ -860,6 +864,15 @@ class ListokController extends Controller
                 ->whereIn('id', $guestIds)
                 ->update(['tag' => $tag, 'updated_at' => now()]);
 
+            foreach ($guestIds as $guestId) {
+                AuditEvent::add(
+                    'Присвоил тег',
+                    $guestId,
+                    'tb_listok',
+                    ['tag' => $tag, 'updated_at' => now()]
+                );
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Тег успешно обновлен.'
@@ -932,6 +945,112 @@ class ListokController extends Controller
                 'feedback' => $data['text'],
             ],
         ]);
+    }
+
+
+    public function getIdentifyQr($regNum)
+    {
+
+        $row = \DB::table('tb_listok as s')
+            ->join('tb_users as u', 's.entry_by', '=', 'u.id')
+            ->join('tb_citizens as bc', 'bc.id', '=', 's.id_country')
+            ->join('tb_citizens as ct', 'ct.id', '=', 's.id_citizen')
+            ->join('tb_citizens as cf', 'cf.id', '=', 's.id_countryFrom')
+            ->join('tb_hotels as h', 'h.id', '=', 's.id_hotel')
+            ->join('tb_region as r', 'r.id', '=', 's.id_region')
+            ->leftJoin('tb_visittype as visit', 'visit.id', '=', 's.id_visitType')
+            ->leftJoin('tb_guests as guest', 'guest.id', '=', 's.id_guest')
+            ->leftJoin('tb_passporttype as passport', 'passport.id', '=', 's.id_passportType')
+            ->selectRaw(\DB::raw("
+                s.*,
+                ct.SP_NAME03 as ctzn,
+                bc.SP_NAME03 as born_country,
+                cf.SP_NAME03 as from_country,
+                h.name as hotel_name,
+                r.name as region,
+                CONCAT(UCASE(SUBSTRING(u.first_name, 1, 1)), '. ', u.last_name) as administrator,
+                visit.name as visit_type,
+                guest.guesttype as guest_type,
+                passport.name as passport_type
+            "))
+            ->where('s.regNum', $regNum)
+            ->first();
+        if ($row) {
+            $data = $row;
+            $datachildren = \DB::table("tb_children")->where('id_listok', $row->id)->get();
+            return view('listok.qrlistok', ['data' => $data, 'datachildren' => $datachildren]);
+        }
+        return abort(404, 'Data not found!');
+    }
+
+
+    public function getAuditLogs(Request $request)
+    {
+        $entity_id = $request->input('entity_id');
+        if (!$entity_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Entity ID is required.',
+            ], 400);
+        }
+
+        $clickhouse = app(ClickhouseService::class);
+
+        $query = "
+        SELECT
+            event_type,
+            hotel_name,
+            user_name,
+            entity_id,
+            entity_type,
+            event_time,
+            changes
+        FROM emehmon.audit_events
+        WHERE entity_id = :entity_id
+        ORDER BY event_time DESC
+        LIMIT 100
+    ";
+
+        try {
+            $auditLogs = $clickhouse->select($query, ['entity_id' => $entity_id]);
+
+            $formattedLogs = array_map(function ($log) {
+                $log['changes'] = $this->formatChanges($log['changes']);
+                $log['event_time'] = Carbon::parse($log['event_time'])->format('d.m.Y H:i');
+                return $log;
+            }, $auditLogs);
+
+            return response()->json([
+                'success' => true,
+                'data' => $formattedLogs,
+                'count' => count($formattedLogs),
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('ClickHouse query error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при выполнении запроса к ClickHouse.',
+            ], 500);
+        }
+    }
+
+    private function formatChanges(string $changes): string
+    {
+        try {
+            $changesObj = json_decode($changes, true);
+            $message = '';
+
+            if (isset($changesObj['tag'])) {
+                $message = "Присвоил тег {$changesObj['tag']}";
+            }
+
+
+            return $message ?: 'Изменения не указаны';
+        } catch (\Exception $e) {
+            \Log::error('Ошибка при форматировании изменений: ' . $e->getMessage());
+            return 'Ошибка при обработке изменений';
+        }
+
     }
 
 }

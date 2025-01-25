@@ -12,6 +12,13 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/selectize@0.12.6/dist/css/selectize.default.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@eonasdan/tempus-dominus@6/build/css/tempus-dominus.css">
     <style>
+        #info {
+            overflow-x: hidden;
+        }
+
+    </style>
+    <style>
+
         .admin{
             background-color: #fff6ee;
             padding: 10px;
@@ -750,13 +757,12 @@
                                                 padding: 5px;
                                                 text-align: left;
                                                 height: 15px;
-                                                vertical-align: middle; /* Выравнивание содержимого по центру */
+                                                vertical-align: middle;
                                             }
 
-                                            /* Установка фиксированной ширины для каждой колонки */
-                                            th:nth-child(1), td:nth-child(1) { width: 30%; } /* Первая колонка */
-                                            th:nth-child(2), td:nth-child(2) { width: 50%; } /* Вторая колонка */
-                                            th:nth-child(3), td:nth-child(3) { width: 20%;} /* Третья колонка */
+                                            th:nth-child(1), td:nth-child(1) { width: 30%; }
+                                            th:nth-child(2), td:nth-child(2) { width: 50%; }
+                                            th:nth-child(3), td:nth-child(3) { width: 20%;}
 
                                             </style>
 
@@ -769,85 +775,82 @@
                                         if (currentCount === 0) {
                                             printContent += `<div class="page">`;
                                         }
-                                        const fullname = (row.guest || '').split(' ');
-                                        const lastName = fullname[0] || '';
-                                        const firstName = fullname[1] || '';
-                                        const surname = fullname[2] || '';
+
                                         printContent += `
-            <table id="childrenTable" style="width: 100%; border: 1px solid black; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px;">
-                <tr>
-                    <td colspan="1" style="border: 1px solid black; text-align: center; padding: 5px;">
-                        <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="height: 50px;">
-                    </td>
-                    <td colspan="2" style="border: 1px solid black; text-align: center; padding: 5px;">
-                        <strong>Гостиница:</strong> ${row.htl || '&nbsp;'}<br>
-                        <strong>Регион:</strong> ${row.region || '&nbsp;'}<br>
-                        <strong>Адрес:</strong> ${row.tag || '&nbsp;'}<br>
-                        <strong>№ ком.:</strong> ${row.room || '&nbsp;'}
-                    </td>
-                    <td colspan="1" style="border: 1px solid black; text-align: center; padding: 5px;">
-                        <div class="qrcode" id="qrcode-${row.regNum}"></div>
-                        <p>${row.regNum || '&nbsp;'}</p>
-                    </td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;"><strong>1. ФАМИЛИЯ:</strong></td>
-                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${lastName || '&nbsp;'}</td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;"><strong>2. ИМЯ:</strong></td>
-                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${firstName || '&nbsp;'}</td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;"><strong>3. ОТЧЕСТВО:</strong></td>
-                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${surname || '&nbsp;'}</td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;"><strong>4. ДАТА РОЖДЕНИЯ:</strong></td>
-                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.datebirth || '&nbsp;'}</td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;"><strong>5. ГРАЖДАНСТВО:</strong></td>
-                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.ctzn || '&nbsp;'}</td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;"><strong>6. ДОКУМЕНТ:</strong></td>
-                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.document || '&nbsp;'}</td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;"><strong>7. ВИЗА:</strong></td>
-                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.visa || '&nbsp;'}</td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;"><strong>8. ОТКУДА ПРИБЫЛ:</strong></td>
-                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.arrival || '&nbsp;'}</td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;"><strong>9. КПП:</strong></td>
-                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.kppnumber || '&nbsp;'}</td>
-                </tr>
-                <tr>
-                    <td colspan="5" style="border: 1px solid black; padding: 5px;"><strong>10. Вместе с ним/ней прибыли дети до 16 лет</strong></td>
-                </tr>
-                <tr>
-                    <th style="border: 1px solid black; padding: 5px;"><strong>Имя</strong></th>
-                    <th style="border: 1px solid black; padding: 5px;"><strong>Пол</strong></th>
-                    <th colspan="3" style="border: 1px solid black; padding: 5px;"><strong>Дата рождения</strong></th>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;"><strong>11. ДАТА ПРИБЫТИЯ:</strong></td>
-                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.dateArrival || '&nbsp;'}</td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;"><strong>12. ДАТА УБЫТИЯ:</strong></td>
-                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.dateDeparture || '&nbsp;'}</td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;"><strong>13. АДМИНИСТРАТОР:</strong></td>
-                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.adm || '&nbsp;'}</td>
-                </tr>
-            </table>
-        `;
+                                            <table id="childrenTable" style="width: 100%; border: 1px solid black; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px;">
+                                                <tr>
+                                                    <td colspan="1" style="border: 1px solid black; text-align: center; padding: 5px;">
+                                                        <img src="{{ asset('assets/images/logo.png') }}" alt="Logo" style="height: 50px;">
+                                                    </td>
+                                                    <td colspan="2" style="border: 1px solid black; text-align: center; padding: 5px;">
+                                                        <strong>Гостиница:</strong> ${row.htl || '&nbsp;'}<br>
+                                                        <strong>Регион:</strong> ${row.region || '&nbsp;'}<br>
+                                                        <strong>Адрес:</strong> ${row.htl_address || '&nbsp;'}<br>
+                                                        <strong>№ ком.:</strong> ${row.room || '&nbsp;'}
+                                                    </td>
+                                                    <td colspan="1" style="border: 1px solid black; text-align: center; padding: 5px;">
+                                                        <div class="qrcode" id="qrcode-${row.regNum}"></div>
+                                                        <p>${row.regNum || '&nbsp;'}</p>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="border: 1px solid black; padding: 5px;"><strong>1. ФАМИЛИЯ:</strong></td>
+                                                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.surname || '&nbsp;'}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="border: 1px solid black; padding: 5px;"><strong>2. ИМЯ:</strong></td>
+                                                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.firstname || '&nbsp;'}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="border: 1px solid black; padding: 5px;"><strong>3. ОТЧЕСТВО:</strong></td>
+                                                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.lastname || '&nbsp;'}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="border: 1px solid black; padding: 5px;"><strong>4. ДАТА РОЖДЕНИЯ:</strong></td>
+                                                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.datebirth || '&nbsp;'}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="border: 1px solid black; padding: 5px;"><strong>5. ГРАЖДАНСТВО:</strong></td>
+                                                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.ctzn || '&nbsp;'}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="border: 1px solid black; padding: 5px;"><strong>6. ДОКУМЕНТ:</strong></td>
+                                                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.passportType || '&nbsp;'}: ${row.passport_full || ''}; Выдан:${formatDate(row.datePassport)} / ${row.PassportIssuedBy || 'Не указано'}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="border: 1px solid black; padding: 5px;"><strong>7. ВИЗА:</strong></td>
+                                                    <td colspan="4" style="border: 1px solid black; padding: 5px;">Тип: ${row.tb_visa || '&nbsp;'}; № ${row.tb_visanm || '&nbsp;'}; ${row.tb_visafrom || '&nbsp;'} - ${row.tb_visato || '&nbsp;'}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="border: 1px solid black; padding: 5px;"><strong>8. ОТКУДА ПРИБЫЛ:</strong></td>
+                                                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.ctzn || '&nbsp;'}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="border: 1px solid black; padding: 5px;"><strong>9. КПП:</strong></td>
+                                                    <td colspan="4" style="border: 1px solid black; padding: 5px;">№ ${row.kppNumber || '&nbsp;'}; Дата: ${row.dateKPP || '&nbsp;'} </td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="5" style="border: 1px solid black; padding: 5px;"><strong>10. Вместе с ним/ней прибыли дети до 16 лет</strong></td>
+                                                </tr>
+                                                <tr>
+                                                    <th style="border: 1px solid black; padding: 5px;"><strong>Имя</strong></th>
+                                                    <th style="border: 1px solid black; padding: 5px;"><strong>Пол</strong></th>
+                                                    <th colspan="3" style="border: 1px solid black; padding: 5px;"><strong>Дата рождения</strong></th>
+                                                </tr>
+                                                <tr>
+                                                    <td style="border: 1px solid black; padding: 5px;"><strong>11. ДАТА ПРИБЫТИЯ:</strong></td>
+                                                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.dt || '&nbsp;'}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="border: 1px solid black; padding: 5px;"><strong>12. ДАТА УБЫТИЯ:</strong></td>
+                                                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.dateDeparture || '&nbsp;'}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="border: 1px solid black; padding: 5px;"><strong>13. АДМИНИСТРАТОР:</strong></td>
+                                                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.adm || '&nbsp;'}</td>
+                                                </tr>
+                                            </table>
+                                        `;
 
                                         currentCount++;
                                         if (currentCount === rowsPerPage) {
@@ -873,7 +876,8 @@
 
                                     iframe.onload = function() {
                                         $.each(selectedRows, function(index, row) {
-                                            const url = `https://example.com/guest/${row.regNum}`;
+                                            var appUrl = '{{ env('APP_URL') }}';
+                                            const url = appUrl + `/listok/identify-qr/${row.regNum}`;
                                             let qrElement = iframe.contentWindow.document.getElementById(`qrcode-${row.regNum}`);
                                             if (qrElement) {
                                                 new QRCode(qrElement, {
@@ -1344,13 +1348,12 @@
                                                 padding: 5px;
                                                 text-align: left;
                                                 height: 15px;
-                                                vertical-align: middle; /* Выравнивание содержимого по центру */
+                                                vertical-align: middle;
                                             }
 
-                                            /* Установка фиксированной ширины для каждой колонки */
-                                            th:nth-child(1), td:nth-child(1) { width: 30%; } /* Первая колонка */
-                                            th:nth-child(2), td:nth-child(2) { width: 50%; } /* Вторая колонка */
-                                            th:nth-child(3), td:nth-child(3) { width: 20%;} /* Третья колонка */
+                                            th:nth-child(1), td:nth-child(1) { width: 30%; }
+                                            th:nth-child(2), td:nth-child(2) { width: 50%; }
+                                            th:nth-child(3), td:nth-child(3) { width: 20%;}
 
                                             </style>
 
@@ -1363,10 +1366,8 @@
                         if (currentCount === 0) {
                             printContent += `<div class="page">`;
                         }
-                        const fullname = (row.guest || '').split(' ');
-                        const lastName = fullname[0] || '';
-                        const firstName = fullname[1] || '';
-                        const surname = fullname[2] || '';
+
+                        console.log(row)
                         printContent += `
             <table id="childrenTable" style="width: 100%; border: 1px solid black; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px;">
                 <tr>
@@ -1376,7 +1377,7 @@
                     <td colspan="2" style="border: 1px solid black; text-align: center; padding: 5px;">
                         <strong>Гостиница:</strong> ${row.htl || '&nbsp;'}<br>
                         <strong>Регион:</strong> ${row.region || '&nbsp;'}<br>
-                        <strong>Адрес:</strong> ${row.tag || '&nbsp;'}<br>
+                        <strong>Адрес:</strong> ${row.htl_address || '&nbsp;'}<br>
                         <strong>№ ком.:</strong> ${row.room || '&nbsp;'}
                     </td>
                     <td colspan="1" style="border: 1px solid black; text-align: center; padding: 5px;">
@@ -1386,15 +1387,15 @@
                 </tr>
                 <tr>
                     <td style="border: 1px solid black; padding: 5px;"><strong>1. ФАМИЛИЯ:</strong></td>
-                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${lastName || '&nbsp;'}</td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.surname || '&nbsp;'}</td>
                 </tr>
                 <tr>
                     <td style="border: 1px solid black; padding: 5px;"><strong>2. ИМЯ:</strong></td>
-                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${firstName || '&nbsp;'}</td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.firstname || '&nbsp;'}</td>
                 </tr>
                 <tr>
                     <td style="border: 1px solid black; padding: 5px;"><strong>3. ОТЧЕСТВО:</strong></td>
-                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${surname || '&nbsp;'}</td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.lastname || '&nbsp;'}</td>
                 </tr>
                 <tr>
                     <td style="border: 1px solid black; padding: 5px;"><strong>4. ДАТА РОЖДЕНИЯ:</strong></td>
@@ -1406,19 +1407,19 @@
                 </tr>
                 <tr>
                     <td style="border: 1px solid black; padding: 5px;"><strong>6. ДОКУМЕНТ:</strong></td>
-                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.document || '&nbsp;'}</td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.passportType || '&nbsp;'}: ${row.passport_full || ''}; Выдан:${formatDate(row.datePassport)} / ${row.PassportIssuedBy || 'Не указано'}</td>
                 </tr>
                 <tr>
                     <td style="border: 1px solid black; padding: 5px;"><strong>7. ВИЗА:</strong></td>
-                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.visa || '&nbsp;'}</td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">Тип: ${row.tb_visa || '&nbsp;'}; № ${row.tb_visanm || '&nbsp;'}; ${row.tb_visafrom || '&nbsp;'} - ${row.tb_visato || '&nbsp;'}</td>
                 </tr>
                 <tr>
                     <td style="border: 1px solid black; padding: 5px;"><strong>8. ОТКУДА ПРИБЫЛ:</strong></td>
-                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.arrival || '&nbsp;'}</td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.ctzn || '&nbsp;'}</td>
                 </tr>
                 <tr>
                     <td style="border: 1px solid black; padding: 5px;"><strong>9. КПП:</strong></td>
-                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.kppnumber || '&nbsp;'}</td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">№ ${row.kppNumber || '&nbsp;'}; Дата: ${row.dateKPP || '&nbsp;'} </td>
                 </tr>
                 <tr>
                     <td colspan="5" style="border: 1px solid black; padding: 5px;"><strong>10. Вместе с ним/ней прибыли дети до 16 лет</strong></td>
@@ -1430,7 +1431,7 @@
                 </tr>
                 <tr>
                     <td style="border: 1px solid black; padding: 5px;"><strong>11. ДАТА ПРИБЫТИЯ:</strong></td>
-                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.dateArrival || '&nbsp;'}</td>
+                    <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.dt || '&nbsp;'}</td>
                 </tr>
                 <tr>
                     <td style="border: 1px solid black; padding: 5px;"><strong>12. ДАТА УБЫТИЯ:</strong></td>
@@ -1467,7 +1468,8 @@
 
                     iframe.onload = function() {
                         $.each(selectedPrintRows, function(index, row) {
-                            const url = `https://example.com/guest/${row.regNum}`;
+                            var appUrl = '{{ env('APP_URL') }}';
+                            const url = appUrl + `/listok/identify-qr/${row.regNum}`;
                             let qrElement = iframe.contentWindow.document.getElementById(`qrcode-${row.regNum}`);
                             if (qrElement) {
                                 new QRCode(qrElement, {
@@ -1837,88 +1839,97 @@
                         <li class="nav-item">
                             <a class="nav-link" data-bs-toggle="tab" href="#bron-room" role="tab">Бронирования <span class="badge bg-primary">${bronRoom.length}</span></a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#audit" role="tab">Аудит <span class="badge bg-primary">0</span></a>
+                        </li>
                     </ul>
-                    <div class="row tab-content">
-                        <div class="tab-pane fade show active col-md-10" id="info" role="tabpanel">
-                            <table class="table dataTable row-border compact table-hover" id="db-click-table">
-                                <tbody>
-                                    <tr>
-                                        <th>Рег. №:</th>
-                                        <td>${data.regNum || 'Не указано'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>ПИНФЛ:</th>
-                                        <td>${data.pinfl || 'Не указано'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Фамилия, Имя, Отчество:</th>
-                                        <td>${data.guest}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Дата рождения:</th>
-                                        <td>${formatDate(data.datebirth)}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Страна рождения:</th>
-                                        <td>${data.ctz} ${data.ctzn}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Гражданство:</th>
-                                        <td>${data.ctz} ${data.ctzn}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Откуда:</th>
-                                        <td>${data.ctz} ${data.ctzn}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Проживает в номере:	</th>
-                                        <td>${data.room}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Сколько дней будет проживать:</th>
-                                        <td>${data.wdays || 'Не указано'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Статус оплаты:</th>
-                                        <td>
-                                            ${data.payed === 1
-                                            ? 'Оплачен частично'
-                                            : data.payed === 2
-                                            ? 'Оплачен полностью'
-                                            : data.payed === 3
-                                            ? 'Неоплачен'
-                                            : 'Не указано'}
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th>Сумма (UZS):</th>
-                                        <td>${data.amount || '0,00'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Пол:</th>
-                                        <td>${data.sex === 'M' ? 'Мужчина' : 'Женщина'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Прибыл:</th>
-                                        <td>${data.dt || 'Не указано'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Гостиница:</th>
-                                        <td>${data.htl || 'Не указано'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Зарегистрировал:</th>
-                                        <td>${data.adm || 'Не указано'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Обновлено:</th>
-                                        <td>${data.updated_at || 'Не указано'}</td>
-                                    </tr>
-
-                                </tbody>
-                            </table>
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="info" role="tabpanel">
+                            <div class="row">
+                                <div class="col-md-10">
+                                    <table class="table dataTable row-border compact table-hover" id="db-click-table">
+                                        <tbody>
+                                            <tr>
+                                                <th>Рег. №:</th>
+                                                <td>${data.regNum || 'Не указано'}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>ПИНФЛ:</th>
+                                                <td>${data.pinfl || 'Не указано'}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Фамилия, Имя, Отчество:</th>
+                                                <td>${data.guest || 'Не указано'}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Дата рождения:</th>
+                                                <td>${formatDate(data.datebirth) || 'Не указано'}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Страна рождения:</th>
+                                                <td>${data.ctz || 'Не указано'} ${data.ctzn || 'Не указано'}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Гражданство:</th>
+                                                <td>${data.ctz || 'Не указано'} ${data.ctzn || 'Не указано'}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Откуда:</th>
+                                                <td>${data.ctz || 'Не указано'} ${data.ctzn || 'Не указано'}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Проживает в номере:</th>
+                                                <td>${data.room || 'Не указано'}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Сколько дней будет проживать:</th>
+                                                <td>${data.wdays || 'Не указано'}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Статус оплаты:</th>
+                                                <td>
+                                                    ${data.payed === 1
+                                                ? 'Оплачен частично'
+                                                : data.payed === 2
+                                                    ? 'Оплачен полностью'
+                                                    : data.payed === 3
+                                                        ? 'Неоплачен'
+                                                        : 'Не указано'}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th>Сумма (UZS):</th>
+                                                <td>${data.amount || '0,00'}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Пол:</th>
+                                                <td>${data.sex === 'M' ? 'Мужчина' : 'Женщина'}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Прибыл:</th>
+                                                <td>${data.dt || 'Не указано'}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Гостиница:</th>
+                                                <td>${data.htl || 'Не указано'}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Зарегистрировал:</th>
+                                                <td>${data.adm || 'Не указано'}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Обновлено:</th>
+                                                <td>${data.updated_at || 'Не указано'}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="col-md-2">
+                                    <div id="qrcode-${data.regNum}"></div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="qrcode col-md-2" id="qrcode-${data.regNum}"></div>
+
                         <div class="tab-pane fade" id="additional-info" role="tabpanel">
                             <table class="table dataTable row-border compact table-hover" id="db-click-table">
                                 <tbody>
@@ -2049,6 +2060,23 @@
                                     </tbody>
                             </table>
                         </div>
+
+                        <div class="tab-pane fade" id="audit" role="tabpanel">
+                            <table class="table dataTable row-border compact table-hover">
+                                <thead>
+                                    <tr class="text-center">
+                                        <th>Тип события</th>
+                                        <th>Гостиница</th>
+                                        <th>Администратор</th>
+                                        <th>Дата</th>
+                                        <th>Изменения</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td colspan="7" class="text-center">Загрузка...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                 </div>
             `,
                     type: 'blue',
@@ -2056,17 +2084,60 @@
                     useBootstrap: false,
                     buttons: false,
                     onContentReady: function() {
-                        const qrCodeContainer = document.getElementById(`qrcode-${data.regNum}`);
 
+                        $.ajax({
+                            url: '{{ route("listok.getAuditLogs") }}',
+                            method: 'GET',
+                            data: {
+                                entity_id: data.id,
+                                _token: $('meta[name="csrf-token"]').attr('content')
+                            },
+                            success: function(response) {
+                                console.log('Entity ID:', data.id);
+                                if (response.success && response.data.length > 0) {
+                                    var rows = response.data.map(function(log) {
+                                        return `
+                                            <tr class="text-center">
+                                                <td>${log.event_type}</td>
+                                                <td>${log.hotel_name}</td>
+                                                <td>${log.user_name}</td>
+                                                <td>${log.event_time}</td>
+                                                <td>${log.changes}</td>
+                                            </tr>
+                                        `;
+                                    }).join('');
+                                    $('#audit tbody').html(rows);
+                                    $('a[href="#audit"] .badge').text(response.count);
+                                } else {
+                                    $('#audit tbody').html('<tr><td colspan="7" class="text-center">Нет данных!</td></tr>');
+                                    $('a[href="#audit"] .badge').text(0);
+                                }
+                            },
+                            error: function(xhr, status, error) {
+                                console.error('Ошибка при загрузке данных:', error); // Отладка
+                                $('#audit tbody').html('<tr><td colspan="7" class="text-center text-danger">Ошибка загрузки данных!</td></tr>');
+                                $('a[href="#audit"] .badge').text(0);
+                            }
+                        });
+
+
+
+                        const qrCodeContainer = document.getElementById(`qrcode-${data.regNum}`);
+                        var appUrl = '{{ env('APP_URL') }}';
+                        const url = appUrl + `/listok/identify-qr/${data.regNum}`;
                         if (qrCodeContainer) {
                             new QRCode(qrCodeContainer, {
-                                text: data.regNum.toString(),
+                                text: url,
                                 width: 200,
                                 height: 200
                             });
                         } else {
                             console.error("QR-код контейнер не найден.");
                         }
+
+
+
+
                         this.$content.find('#add-review-btn').on('click', function() {
                             $.confirm({
                                 title: 'Добавить Отзыв',

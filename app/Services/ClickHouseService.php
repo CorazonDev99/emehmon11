@@ -20,6 +20,14 @@ class ClickHouseService
         $this->client->database(env('CLICKHOUSE_DATABASE', 'default'));
     }
 
+
+    public function select(string $query, array $bindings = []): array
+    {
+        $statement = $this->client->select($query, $bindings);
+
+        return $statement->rows();
+    }
+
     public function getClient(): Client
     {
         return $this->client;

@@ -25,6 +25,8 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+
+
 Route::get('/dashboard', function () {
     return view('dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
@@ -38,6 +40,8 @@ require __DIR__ . '/auth.php';
 
 Route::auto('users', UserController::class);
 
+
+Route::get('/listok/identify-qr/{id}', [ListokController::class, 'getIdentifyQr']);
 
 Route::group(['middleware' => ['auth']], function () {
     Route::resource('users', UserController::class);
