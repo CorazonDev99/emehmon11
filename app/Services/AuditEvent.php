@@ -15,11 +15,11 @@ class AuditEvent
 
         $uid = \Session::get('uid', $authUser ? $authUser->id : 0);
         $hid = \Session::get('hid', $authUser ? $authUser->id_hotel : 0);
-        $fid = \Session::get('fid', $authUser ? $authUser->first_name . ' ' . $authUser->last_name : 'Unknown User');
+        $fid = \Session::get('fid', $authUser ? $authUser->first_name . ' ' . $authUser->last_name : '');
         $htlname = \Session::get('htlname');
         if (!$htlname && $authUser) {
             $hotel = \DB::table('tb_hotels')->where('id', $authUser->id_hotel)->first();
-            $htlname = $hotel ? $hotel->name : 'Unknown Hotel';
+            $htlname = $hotel ? $hotel->name : '';
         }
 
         $audit = [

@@ -162,6 +162,7 @@ class ListokController extends Controller
         $d = \DB::table('tb_listok')
             ->leftJoin('tb_passporttype', 'tb_listok.id_passporttype', '=', 'tb_passporttype.id')
             ->leftJoin('tb_guests', 'tb_listok.id_guest', '=', 'tb_guests.id')
+            ->leftJoin('tb_listok_hash', 'tb_listok_hash.id_reg', '=', 'tb_listok.id')
             ->leftJoin('tb_visittype', 'tb_listok.id_visitType', '=', 'tb_visittype.id')
             ->leftJoin('tb_users', 'tb_listok.entry_by', '=', 'tb_users.id')
             ->leftJoin('tb_citizens', 'tb_listok.id_citizen', '=', 'tb_citizens.id')
@@ -180,6 +181,7 @@ class ListokController extends Controller
                 tb_listok.payed,
                 tb_listok.paytp,
                 tb_listok.tag,
+                tb_listok_hash.rowhash,
                 tb_listok.id_hotel,
                 tb_listok.surname,
                 tb_listok.firstname,
@@ -647,7 +649,6 @@ class ListokController extends Controller
             'id_countryFrom' => $request->get('id_countryfrom'),
             'id_passporttype' => $request->get('id_passporttype'),
             'dateVisitOn' => $request->get('datevisiton'),
-//            'regNum' => '000000',
             'datebirth' => $request->get('datebirth'),
             'id_citizen' => $request->get('id_countryfrom'),
             'propiska' => $request->get('propiska'),
@@ -679,32 +680,39 @@ class ListokController extends Controller
 
         $id_listok = \DB::table('tb_listok')->insertGetId($data);
 
+        if ($id_listok) {
+            $rowhash = sha1($id_listok . $request->get('pinfl') . now());
 
-        $children = $request->get('childrens', []);
-        if ($children){
-            foreach ($children as $child) {
-                if (!empty($child['name']) || !empty($child['gender']) || !empty($child['birthday'])) {
-                    $formattedBirthday = null;
-                    if (!empty($child['birthday'])) {
-                        $formattedBirthday = \DateTime::createFromFormat('d/m/Y', $child['birthday'])->format('Y-m-d');
+            \DB::table('tb_listok_hash')->insert([
+                'rowhash' => $rowhash,
+                'id_reg' => $id_listok,
+                'pinfl' => $request->get('pinfl'),
+                'viewed_qty' => 0,
+            ]);
+
+            $children = $request->get('childrens', []);
+            if ($children) {
+                foreach ($children as $child) {
+                    if (!empty($child['name']) || !empty($child['gender']) || !empty($child['birthday'])) {
+                        $formattedBirthday = null;
+                        if (!empty($child['birthday'])) {
+                            $formattedBirthday = \DateTime::createFromFormat('d/m/Y', $child['birthday'])->format('Y-m-d');
+                        }
+
+                        $child_data = [
+                            'name' => $child['name'],
+                            'gender' => $child['gender'],
+                            'dateBirth' => $formattedBirthday,
+                            'id_listok' => $id_listok,
+                        ];
+
+                        \DB::table('tb_children')->insert($child_data);
                     }
-
-                    $child_data = [
-                        'name' => $child['name'],
-                        'gender' => $child['gender'],
-                        'dateBirth' => $formattedBirthday,
-                        'id_listok' => $id_listok,
-                    ];
-
-                    \DB::table('tb_children')->insert($child_data);
                 }
             }
-        }
 
-
-        if ($id_listok) {
             session()->flash('success', 'Данные успешно сохранены');
-            return response()->json(['status' => 'success']);
+            return response()->json(['status' => 'success', 'rowhash' => $rowhash]); // Возвращаем хэш в ответе
         } else {
             return response()->json(['status' => 'error']);
         }
@@ -731,90 +739,44 @@ class ListokController extends Controller
     }
 
 
-    public function update(Request $request)
-    {
-        $data = $request->all();
-        if (empty($data['id'])) {
-            return response()->json(['error' => 'Не передан идентификатор регистрации.'], 400);
-        }
-
-        $affected = \DB::table('tb_listok')
-            ->where('id', $data['id'])
-            ->update([
-                'pinfl' => $data['pinfl'],
-                'datePassport' => $data['datePassport'],
-                'PassportIssuedBy' => $data['passportissuedby'],
-                'surname' => $data['surname'],
-                'firstname' => $data['firstname'],
-                'lastname' => $data['lastname'],
-                'id_citizen' => $data['id_citizen'],
-                'sex' => $data['sex'],
-                'dateVisitOn' => $data['datevisiton'],
-                'propiska' => $data['room_number'],
-                'wdays' => $data['stay_days'],
-                'id_visitType' => $data['id_visitType'],
-                'id_visa' => $data['id_visa'],
-                'kppNumber' => $data['kpp_number'],
-                'dateKPP' => $data['kpp_date'],
-                'paytp' => $data['payment_status'],
-                'amount' => $data['payment_amount'],
-                'id_guest' => $data['id_guest'],
-                'updated_at' => now(),
-            ]);
-
-        if ($affected) {
-            $updatedRecord = \DB::table('tb_listok')->where('id', $data['id'])->first();
-
-            session()->flash('success', 'Данные успешно обновлены');
-            return response()->json(['status' => 'success', 'updated_data' => $updatedRecord]);
-        } else {
-            return response()->json(['error' => 'Запись не найдена'], 400);
-        }
-    }
-
     public function moveToRoom(Request $request)
     {
-        $guestIds = $request->input('guest_ids', []);
-        $hotelIds = $request->input('hotel_ids', []);
-        $entryBys = $request->input('entry_bys', []);
-        $oldRooms = $request->input('old_room_numbers', []);
+        $guestId = $request->input('guest_id');
+        $hotelId = $request->input('hotel_id');
+        $entryBy = $request->input('entry_by');
+        $oldRoom = $request->input('old_room_number');
         $newRoom = $request->input('room_number');
-        $guests = $request->input('guests', []);
+        $guest = $request->input('guest');
 
-        if (empty($guestIds) || !$newRoom) {
+        if (!$guestId || !$newRoom) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Необходимо выбрать гостей и номер комнаты.'
+                'message' => 'Необходимо выбрать гостя и номер комнаты.'
             ]);
         }
 
         \DB::table('tb_listok')
-            ->whereIn('id', $guestIds)
+            ->where('id', $guestId)
             ->update(['propiska' => $newRoom, 'updated_at' => now()]);
 
-        $roomHistoryData = [];
-        foreach ($guestIds as $index => $guestId) {
-            $roomHistoryData[] = [
-                'id_reg' => $guestId,
-                'id_hotel' => $hotelIds[$index] ?? null,
-                'entry_by' => $entryBys[$index] ?? null,
-                'events' => sprintf(
-                    "%s changed room number from %s to %s",
-                    $guests[$index] ?? 'Guest',
-                    $oldRooms[$index] ?? 'Unknown',
-                    $newRoom
-                ),
-                'created_at' => now(),
-            ];
-        }
+        $roomHistoryData = [
+            'id_reg' => $guestId,
+            'id_hotel' => $hotelId,
+            'entry_by' => $entryBy,
+            'events' => sprintf(
+                "%s changed room number from %s to %s",
+                $guest ?? 'Guest',
+                $oldRoom ?? 'Unknown',
+                $newRoom
+            ),
+            'created_at' => now(),
+        ];
 
-        if (!empty($roomHistoryData)) {
-            \DB::table('tb_room_history')->insert($roomHistoryData);
-        }
+        \DB::table('tb_room_history')->insert($roomHistoryData);
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Гости успешно перемещены.'
+            'message' => 'Гость успешно перемещен.'
         ]);
     }
 
@@ -823,29 +785,55 @@ class ListokController extends Controller
     public function statusPayment(Request $request)
     {
         $guestIds = $request->input('guest_ids');
-        $newpaymentStatus = $request->input('paymentStatus');
-        $newpayment = $request->input('payment');
+        $newPaymentStatus = $request->input('paymentStatus');
+        $newPayment = $request->input('payment');
 
-        if (empty($guestIds) || $newpayment == null || empty($newpaymentStatus)) {
+        if (empty($guestIds) || $newPayment === null || empty($newPaymentStatus)) {
             return response()->json(['status' => 'error', 'message' => 'Необходимо написать сумму!']);
         }
 
-
         try {
+            $currentPayments = \DB::table('tb_listok')
+                ->whereIn('id', $guestIds)
+                ->select('id', 'payed', 'amount')
+                ->get()
+                ->keyBy('id');
+
             \DB::table('tb_listok')
-            ->whereIn('id', $guestIds)
-            ->update(['payed' => $newpaymentStatus,'amount' => $newpayment, 'updated_at' => now()]);
+                ->whereIn('id', $guestIds)
+                ->update([
+                    'payed' => $newPaymentStatus,
+                    'amount' => $newPayment,
+                    'updated_at' => now(),
+                ]);
+
+            foreach ($guestIds as $guestId) {
+                if (isset($currentPayments[$guestId])) {
+                    $currentData = $currentPayments[$guestId];
+
+                    AuditEvent::add(
+                        'Обновление платежа',
+                        $guestId,
+                        'tb_listok',
+                        [
+                            'old_payed' => $currentData->payed,
+                            'new_payed' => $newPaymentStatus,
+                            'old_amount' => $currentData->amount,
+                            'new_amount' => $newPayment,
+                        ]
+                    );
+                }
+            }
 
             return response()->json(['status' => 'success', 'message' => 'Успешно обновлено!.']);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Ошибка при обновлении amount: ' . $e->getMessage()
+                'message' => 'Ошибка при обновлении amount: ' . $e->getMessage(),
             ]);
         }
-
-
     }
+
 
     public function updateTag(Request $request)
     {
@@ -862,14 +850,14 @@ class ListokController extends Controller
         try {
             \DB::table('tb_listok')
                 ->whereIn('id', $guestIds)
-                ->update(['tag' => $tag, 'updated_at' => now()]);
+                ->update(['tag' => $tag]);
 
             foreach ($guestIds as $guestId) {
                 AuditEvent::add(
                     'Присвоил тег',
                     $guestId,
                     'tb_listok',
-                    ['tag' => $tag, 'updated_at' => now()]
+                    ['tag' => $tag]
                 );
             }
 
@@ -893,10 +881,22 @@ class ListokController extends Controller
         if (empty($guestIds)) {
             return response()->json(['success' => false, 'message' => 'Не выбраны гости для удаления тега.']);
         }
+        foreach ($guestIds as $guestId) {
+            $currentTag = \DB::table('tb_listok')
+                ->where('id', $guestId)
+                ->value('tag');
 
-        \DB::table('tb_listok')
-            ->whereIn('id', $guestIds)
-            ->update(['tag' => '', 'updated_at' => now()]);
+            \DB::table('tb_listok')
+                ->where('id', $guestId)
+                ->update(['tag' => '', 'updated_at' => now()]);
+
+            AuditEvent::add(
+                'Удалить тег',
+                $guestId,
+                'tb_listok',
+                ['tag' => $currentTag]
+            );
+        }
 
         return response()->json(['success' => true, 'message' => 'Теги успешно удалены.']);
     }
@@ -911,16 +911,41 @@ class ListokController extends Controller
             'dateVisaOff' => 'required|date|after_or_equal:dateVisaOn',
         ]);
 
-        \DB::table('tb_listok')
+        $currentVisaDates = \DB::table('tb_listok')
             ->where('id', $guestId)
-            ->update([
-                'dateVisaOn' => $request->dateVisaOn,
-                'dateVisaOff' => $request->dateVisaOff,
-                'updated_at' => now(),
-            ]);
+            ->select('dateVisaOn', 'dateVisaOff')
+            ->first();
 
-        return response()->json(['success' => true]);
+        try {
+            \DB::table('tb_listok')
+                ->where('id', $guestId)
+                ->update([
+                    'dateVisaOn' => $request->dateVisaOn,
+                    'dateVisaOff' => $request->dateVisaOff,
+                    'updated_at' => now(),
+                ]);
+
+            AuditEvent::add(
+                'Продление визы',
+                $guestId,
+                'tb_listok',
+                [
+                    'old_dateVisaOn' => $currentVisaDates->dateVisaOn ?? null,
+                    'old_dateVisaOff' => $currentVisaDates->dateVisaOff ?? null,
+                    'new_dateVisaOn' => $request->dateVisaOn,
+                    'new_dateVisaOff' => $request->dateVisaOff,
+                ]
+            );
+
+            return response()->json(['success' => true, 'message' => 'Виза успешно продлена.']);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при продлении визы: ' . $e->getMessage(),
+            ]);
+        }
     }
+
 
     public function feedBack(Request $request)
     {
@@ -948,8 +973,17 @@ class ListokController extends Controller
     }
 
 
-    public function getIdentifyQr($regNum)
+    public function getIdentifyQr($hash)
     {
+        $hashRecord = \DB::table('tb_listok_hash')
+            ->where('rowhash', $hash)
+            ->first();
+
+        if (!$hashRecord) {
+            return abort(404, 'Hash not found!');
+        }
+
+        $id_reg = $hashRecord->id_reg;
 
         $row = \DB::table('tb_listok as s')
             ->join('tb_users as u', 's.entry_by', '=', 'u.id')
@@ -962,24 +996,26 @@ class ListokController extends Controller
             ->leftJoin('tb_guests as guest', 'guest.id', '=', 's.id_guest')
             ->leftJoin('tb_passporttype as passport', 'passport.id', '=', 's.id_passportType')
             ->selectRaw(\DB::raw("
-                s.*,
-                ct.SP_NAME03 as ctzn,
-                bc.SP_NAME03 as born_country,
-                cf.SP_NAME03 as from_country,
-                h.name as hotel_name,
-                r.name as region,
-                CONCAT(UCASE(SUBSTRING(u.first_name, 1, 1)), '. ', u.last_name) as administrator,
-                visit.name as visit_type,
-                guest.guesttype as guest_type,
-                passport.name as passport_type
-            "))
-            ->where('s.regNum', $regNum)
+            s.*,
+            ct.SP_NAME03 as ctzn,
+            bc.SP_NAME03 as born_country,
+            cf.SP_NAME03 as from_country,
+            h.name as hotel_name,
+            r.name as region,
+            CONCAT(UCASE(SUBSTRING(u.first_name, 1, 1)), '. ', u.last_name) as administrator,
+            visit.name as visit_type,
+            guest.guesttype as guest_type,
+            passport.name as passport_type
+        "))
+            ->where('s.id', $id_reg)
             ->first();
+
         if ($row) {
             $data = $row;
             $datachildren = \DB::table("tb_children")->where('id_listok', $row->id)->get();
             return view('listok.qrlistok', ['data' => $data, 'datachildren' => $datachildren]);
         }
+
         return abort(404, 'Data not found!');
     }
 
@@ -1008,14 +1044,13 @@ class ListokController extends Controller
         FROM emehmon.audit_events
         WHERE entity_id = :entity_id
         ORDER BY event_time DESC
-        LIMIT 100
     ";
 
         try {
             $auditLogs = $clickhouse->select($query, ['entity_id' => $entity_id]);
 
             $formattedLogs = array_map(function ($log) {
-                $log['changes'] = $this->formatChanges($log['changes']);
+                $log['changes'] = $this->formatChanges($log['changes'], $log['event_type']);
                 $log['event_time'] = Carbon::parse($log['event_time'])->format('d.m.Y H:i');
                 return $log;
             }, $auditLogs);
@@ -1034,16 +1069,41 @@ class ListokController extends Controller
         }
     }
 
-    private function formatChanges(string $changes): string
+    private function formatChanges(string $changes, string $event_type): string
     {
         try {
             $changesObj = json_decode($changes, true);
             $message = '';
 
-            if (isset($changesObj['tag'])) {
+            $paymentStatuses = [
+                1 => 'Оплачен частично',
+                2 => 'Оплачен полностью',
+                3 => 'Не оплачен',
+            ];
+
+            if ($event_type === 'Присвоил тег') {
                 $message = "Присвоил тег {$changesObj['tag']}";
             }
 
+
+            if ($event_type === 'Удалить тег') {
+                $message = "Удалено тег {$changesObj['tag']}";
+            }
+
+            if ($event_type === 'Продление визы') {
+                $newDateVisaOn = Carbon::parse($changesObj['new_dateVisaOn'])->format('d.m.Y H:i');
+                $newDateVisaOff = Carbon::parse($changesObj['new_dateVisaOff'])->format('d.m.Y H:i');
+                $message = "Продлено виза с {$newDateVisaOn} до {$newDateVisaOff}";
+            }
+
+            if ($event_type === 'Обновление платежа') {
+                $oldPayed = $paymentStatuses[$changesObj['old_payed']] ?? 'Не оплачено';
+                $newPayed = $paymentStatuses[$changesObj['new_payed']] ?? 'Не оплачено';
+                $oldAmount = number_format($changesObj['old_amount'], 2, ',', ' ');
+                $newAmount = number_format($changesObj['new_amount'], 2, ',', ' ');
+
+                $message = "Платежный статус: {$oldPayed} → {$newPayed}, Сумма: {$oldAmount} → {$newAmount}";
+            }
 
             return $message ?: 'Изменения не указаны';
         } catch (\Exception $e) {

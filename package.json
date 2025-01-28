@@ -17,6 +17,7 @@
         "vite": "^5.0"
     },
     "dependencies": {
-        "sortablejs": "^1.15.3"
+        "sortablejs": "^1.15.3",
+        "xlsx-style": "^0.8.13"
     }
 }

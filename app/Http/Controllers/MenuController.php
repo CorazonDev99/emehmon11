@@ -9,13 +9,35 @@ class MenuController extends Controller
 {
     public function index()
     {
+        $user = auth()->user();
+        $userRole = $user->roles->first();
+
+        if (!$userRole) {
+            return redirect()->back()->with('error', 'У вас нет назначенной роли.');
+        }
+
+        $rolePrivileges = DB::table('cms_privileges_roles')
+            ->where('id_cms_privileges', $userRole->id)
+            ->where(function ($query) {
+                $query->where('is_visible', 1)
+                    ->orWhere('is_create', 1)
+                    ->orWhere('is_read', 1)
+                    ->orWhere('is_edit', 1);
+            })
+            ->pluck('id_cms_moduls')
+            ->toArray();
+
+        $modules = DB::table('tb_module')
+            ->where('activate', 1)
+            ->whereIn('module_id', $rolePrivileges)
+            ->get();
+
         $topMenus = $this->getMenuHierarchy('top');
-        $modules = DB::table('tb_module')->where('activate', 1)->get();
         $menus = DB::table('tb_menu')->get();
+        $icons = DB::table('tb_icons')->get();
 
-        return view('core.menu.index', compact('topMenus', 'menus', 'modules'));
+        return view('core.menu.index', compact('topMenus', 'menus', 'modules', 'icons'));
     }
-
     private function getMenuHierarchy($position)
     {
         $menus = DB::table('tb_menu')
@@ -28,7 +50,6 @@ class MenuController extends Controller
 
     private function buildHierarchy($menus, $parentId = 0)
     {
-        // Рекурсивно строим иерархию меню
         $result = [];
         foreach ($menus as $menu) {
             if ($menu->parent_id == $parentId) {
@@ -43,6 +64,7 @@ class MenuController extends Controller
         }
         return $result;
     }
+
 
     public function store(Request $request)
     {
@@ -95,16 +117,13 @@ class MenuController extends Controller
     {
         foreach ($menuItems as $index => $menuItem) {
 
-            $menuType = ($parentId == 0) ? 'external' : 'internal';
 
             DB::table('tb_menu')
                 ->where('menu_id', $menuItem['id'])
                 ->update([
                     'parent_id' => $parentId,
                     'ordering' => $index + 1,
-                    'menu_type' => $menuType,
                 ]);
-
 
             if (isset($menuItem['children']) && count($menuItem['children']) > 0) {
                 $this->saveMenuOrder($menuItem['children'], $menuItem['id']);

@@ -48,7 +48,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.2/jquery-confirm.min.js"></script>
 
 
-
+    <script>
+        $('#child_name').on('input', function() {
+            var maxLength = 30;
+            $(this).val($(this).val().replace(/[^a-zA-Z\s]/g, '').substring(0, maxLength)
+                .toUpperCase()
+            );
+        });
+    </script>
     <script>
         function updateFlagImage(selectedValue, flagImgId) {
             const flagImg = $(flagImgId);
@@ -209,7 +216,7 @@
 
                         Swal.fire({
                             icon: 'success',
-                            title: 'Гость найден!',
+                            title: data.message,
                             text: 'Информация о госте успешно загружена.',
                         });
                     } else {

@@ -11,6 +11,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.4/jquery-confirm.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/selectize@0.12.6/dist/css/selectize.default.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@eonasdan/tempus-dominus@6/build/css/tempus-dominus.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/css/selectize.default.min.css" />
+
     <style>
         #info {
             overflow-x: hidden;
@@ -39,14 +41,14 @@
             background: #00a7d0;
         }
 
-        .jconfirm .jconfirm-buttons {
-            margin-right: 100px !important;
-        }
+        /*.jconfirm .jconfirm-buttons {*/
+        /*    margin-right: 100px !important;*/
+        /*}*/
 
-        .jconfirm .jconfirm-title {
-            margin-left: 20px;
-            margin-top: 20px;
-        }
+        /*.jconfirm .jconfirm-title {*/
+        /*    margin-left: 20px;*/
+        /*    margin-top: 20px;*/
+        /*}*/
 
         .confirm {
             margin-top: 20px !important;
@@ -117,6 +119,7 @@
         .dataTables_wrapper .dataTables_paginate {
             float: right;
         }
+
 
         .card-nav {
             margin-top: 20px !important;
@@ -284,7 +287,8 @@
 
 @section('script')
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="{{ asset('assets/libs/inputmask/inputmask.min.js') }}"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.inputmask/5.0.6/jquery.inputmask.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/js/standalone/selectize.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery-confirm@3.3.4/js/jquery-confirm.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js" type="text/javascript"></script>
@@ -877,7 +881,7 @@
                                     iframe.onload = function() {
                                         $.each(selectedRows, function(index, row) {
                                             var appUrl = '{{ env('APP_URL') }}';
-                                            const url = appUrl + `/listok/identify-qr/${row.regNum}`;
+                                            const url = appUrl + `/listok/identify-qr/${row.rowhash}`;
                                             let qrElement = iframe.contentWindow.document.getElementById(`qrcode-${row.regNum}`);
                                             if (qrElement) {
                                                 new QRCode(qrElement, {
@@ -1130,49 +1134,62 @@
                     const selectedMoveRows = $('#listok-table').DataTable().rows({
                         selected: true
                     }).data();
-                    const selectedGuestsIds = Array.from(selectedMoveRows, row => row.id);
-                    const selectedHtlIds = Array.from(selectedMoveRows, row => row.id_hotel);
-                    const selectedAdmIds = Array.from(selectedMoveRows, row => row.entry_by);
-                    const selectedGuests = Array.from(selectedMoveRows, row => row.guest);
-                    const selectedOldRoomNums = Array.from(selectedMoveRows, row => row.room)
+
+                    if (selectedMoveRows.length !== 1) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: '',
+                            text: 'Пожалуйста, выберите только одного гостя для перемещения.',
+                            confirmButtonText: 'ОК',
+                            confirmButtonColor: '#3085d6',
+                        });
+                        break;
+                    }
+
+
+                    const selectedGuestId = selectedMoveRows[0].id;
+                    const selectedHtlId = selectedMoveRows[0].id_hotel;
+                    const selectedAdmId = selectedMoveRows[0].entry_by;
+                    const selectedGuest = selectedMoveRows[0].guest;
+                    const selectedOldRoomNum = selectedMoveRows[0].room;
+
                     $.confirm({
                         title: '',
                         type: 'blue',
                         content: `
-                                <div class="modal-dialog">
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h5 class="modal-title">Переместить в другой номер</h5>
-                                        </div>
-                                        <div class="modal-body">
-                                            <div class="d-flex align-items-center">
-                                                <i class="fa fa-check-circle" style="font-size: 48px; color: forestgreen; margin-right: 15px;"></i>
-                                                <p>
-                                                    Выбрано <span class="badge bg-primary" id="selectedGuestsCount">${selectedGuestsIds.length}</span> гостей.
-                                                    Вы можете перевести выбранных гостей в другой номер (комнату).
-                                                    Операция применяется ко всем выбранным гостям!
-                                                </p>
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Переместить в другой номер</h5>
                                             </div>
-                                            <div class="mt-3">
-                                                <label for="id_room">Номер / Комната:</label>
-                                                <select id="id_room" name="id_room" class="select2 form-select" required>
-                                                    <option value="">--- НЕ ВЫБРАНО ---</option>
-                                                    @foreach ($rooms as $room)
-                                                    <option value="{{ $room->room_number }}">
-                                                        {{ $room->room_number }} - {{ $room->room_type }};
-                                                        {{ $room->room_floor }} - этаж;
-                                                        1/{{ $room->living_room }}
-                                                        @if (!empty($room->tag))
-                                                            ;({{ $room->tag }})
-                                                        @endif
-                                                    </option>
-                                                    @endforeach
+                                            <div class="modal-body">
+                                                <div class="d-flex align-items-center">
+                                                    <i class="fa fa-check-circle" style="font-size: 48px; color: forestgreen; margin-right: 15px;"></i>
+                                                    <p>
+                                                        Выбран гость: <span class="badge bg-primary">${selectedGuest}</span>.
+                                                        Вы можете перевести выбранного гостя в другой номер (комнату).
+                                                    </p>
+                                                </div>
+                                                <div class="mt-3">
+                                                    <label for="id_room">Номер / Комната:</label>
+                                                    <select id="id_room" name="id_room" class="select2 form-select" required>
+                                                        <option value="">--- НЕ ВЫБРАНО ---</option>
+                                                        @foreach ($rooms as $room)
+                                                <option value="{{ $room->room_number }}">
+                                                            {{ $room->room_number }} - {{ $room->room_type }};
+                                                            {{ $room->room_floor }} - этаж;
+                                                           {{ $room->living_room }}/{{ $room->beds }}
+                                                @if (!empty($room->tag))
+                                                ;({{ $room->tag }})
+                                                            @endif
+                                                </option>
+                                                @endforeach
                                                 </select>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                                `,
+                        `,
                         buttons: {
                             confirm: {
                                 text: 'Переместить',
@@ -1188,11 +1205,11 @@
                                         type: 'POST',
                                         data: {
                                             _token: '{{ csrf_token() }}',
-                                            guest_ids: selectedGuestsIds,
-                                            hotel_ids: selectedHtlIds,
-                                            entry_bys: selectedAdmIds,
-                                            guests: selectedGuests,
-                                            old_room_numbers: selectedOldRoomNums,
+                                            guest_id: selectedGuestId,
+                                            hotel_id: selectedHtlId,
+                                            entry_by: selectedAdmId,
+                                            guest: selectedGuest,
+                                            old_room_number: selectedOldRoomNum,
                                             room_number: room_number
                                         },
                                         success: function(response) {
@@ -1204,13 +1221,12 @@
                                                     timer: 1500
                                                 });
                                                 window.location.reload();
-
                                             } else {
                                                 $.alert(response.message);
                                             }
                                         },
                                         error: function() {
-                                            $.alert('Произошла ошибка при перемещении гостей.');
+                                            $.alert('Произошла ошибка при перемещении гостя.');
                                         }
                                     });
                                 }
@@ -1367,7 +1383,6 @@
                             printContent += `<div class="page">`;
                         }
 
-                        console.log(row)
                         printContent += `
             <table id="childrenTable" style="width: 100%; border: 1px solid black; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px;">
                 <tr>
@@ -1469,7 +1484,7 @@
                     iframe.onload = function() {
                         $.each(selectedPrintRows, function(index, row) {
                             var appUrl = '{{ env('APP_URL') }}';
-                            const url = appUrl + `/listok/identify-qr/${row.regNum}`;
+                            const url = appUrl + `/listok/identify-qr/${row.rowhash}`;
                             let qrElement = iframe.contentWindow.document.getElementById(`qrcode-${row.regNum}`);
                             if (qrElement) {
                                 new QRCode(qrElement, {
@@ -2042,6 +2057,7 @@
                             <table class="table dataTable row-border compact table-hover">
                                     <thead>
                                         <tr class="text-center">
+                                        <tr class="text-center">
                                             <th>Дата бронирования</th>
                                             <th>Номер телефона</th>
                                             <th>Гостиница</th>
@@ -2093,7 +2109,6 @@
                                 _token: $('meta[name="csrf-token"]').attr('content')
                             },
                             success: function(response) {
-                                console.log('Entity ID:', data.id);
                                 if (response.success && response.data.length > 0) {
                                     var rows = response.data.map(function(log) {
                                         return `
@@ -2124,7 +2139,7 @@
 
                         const qrCodeContainer = document.getElementById(`qrcode-${data.regNum}`);
                         var appUrl = '{{ env('APP_URL') }}';
-                        const url = appUrl + `/listok/identify-qr/${data.regNum}`;
+                        const url = appUrl + `/listok/identify-qr/${data.rowhash}`;
                         if (qrCodeContainer) {
                             new QRCode(qrCodeContainer, {
                                 text: url,
@@ -2143,9 +2158,9 @@
                                 title: 'Добавить Отзыв',
                                 type: "blue",
                                 content: `
-                                    <p style="margin-left:20px;">${data.ctz} ${data.guest}</p>
+                                    <p>${data.ctz} ${data.guest}</p>
                                     <textarea class="form-control" id="feedbackText" rows="4" placeholder="Введите отзыв"></textarea>
-                                    <div class="form-check mt-3">
+                                    <div class="mt-3">
                                         <label class="form-label">Черный список:</label>
                                         <div>
                                             <input type="radio" name="blacklist" value="yes" id="blacklistYes">
@@ -2261,28 +2276,29 @@
                         "<div class='row align-items-center mb-3'>" +
                         "<label class='col-md-3'>ФАМИЛИЯ:</label>" +
                         "<div class='col-md-6 search-input'>" +
-                        "<input type='text' class='form-control' placeholder='ФАМИЛИЯ' name='surname' value='" + (filterValues.surname || '') + "'>" +
+                        "<input type='text' id='surname' class='form-control' placeholder='ФАМИЛИЯ' name='surname' value='" + (filterValues.surname || '') + "'>" +
                         "</div>" +
                         "</div>" +
                         "<div class='row align-items-center mb-3'>" +
                         "<label class='col-md-3'>ИМЯ:</label>" +
                         "<div class='col-md-6 search-input'>" +
-                        "<input type='text' class='form-control' placeholder='ИМЯ' name='firstname' value='" + (filterValues.firstname || '') + "'>" +
+                        "<input type='text' id='first_name' class='form-control' placeholder='ИМЯ' name='firstname' value='" + (filterValues.firstname || '') + "'>" +
                         "</div>" +
                         "</div>" +
                         "<div class='row align-items-center mb-3'>" +
                         "<label class='col-md-3'>ОТЧЕСТВО:</label>" +
                         "<div class='col-md-6 search-input'>" +
-                        "<input type='text' class='form-control' placeholder='ОТЧЕСТВО' name='lastname' value='" + (filterValues.lastname || '') + "'>" +
+                        "<input type='text' id='last_name' class='form-control' placeholder='ОТЧЕСТВО' name='lastname' value='" + (filterValues.lastname || '') + "'>" +
                         "</div>" +
                         "</div>" +
                         "<div class='row align-items-center mb-3'>" +
                         "<label class='col-md-3'>ДАТА РОЖДЕНИЯ:</label>" +
                         "<div class='col-md-6 search-input'>" +
-                        "<input type='date' class='form-control' name='datebirth' value='" + (filterValues.datebirth || '') + "' id='date-birth'>" +
-                        "<small id='birth-date-error' class='text-danger' style='display: none;'>Sana noto‘g‘ri kiritilgan!</small>" +
+                        "<input placeholder='dd.mm.yyyy' class='form-control input-mask-date' " +
+                        "data-inputmask=\"'alias': 'datetime'\" data-inputmask-inputformat='dd.mm.yyyy' inputmode='numeric' " +
+                        "name='datebirth' id='input-birthdate' value='" + (filterValues.datebirth || '') + "'>" +
                         "</div>" +
-                        "</div>" +
+                        "</div>"+
                         "<div class='row align-items-center mb-3'>" +
                         "<label class='col-md-3'>ГРАЖДАНСТВО:</label>" +
                         "<div class='col-md-6 search-input'>" +
@@ -2298,15 +2314,15 @@
                         "<label class='col-md-3'>ПЕРИОД ПРИБЫТИЯ:</label>" +
                         "<div class='col-md-6 search-input'>" +
                         "<div class='d-flex'>" +
-                        "<input type='date' class='form-control me-2' name='arrival_from' value='" + (filterValues.arrival_from || '') + "'>" +
-                        "<input type='date' class='form-control' name='arrival_to' value='" + (filterValues.arrival_to || '') + "'>" +
+                        "<input placeholder='dd.mm.yyyy' class='form-control input-mask-date me-2' data-inputmask=\"'alias': 'datetime'\" data-inputmask-inputformat='dd.mm.yyyy' inputmode='numeric' name='arrival_from' value='" + (filterValues.arrival_from || '') + "'>" +
+                        "<input placeholder='dd.mm.yyyy' class='form-control input-mask-date' data-inputmask=\"'alias': 'datetime'\" data-inputmask-inputformat='dd.mm.yyyy' inputmode='numeric' name='arrival_to' value='" + (filterValues.arrival_to || '') + "'>" +
                         "</div>" +
                         "</div>" +
                         "</div>" +
                         "<div class='row align-items-center mb-3'>" +
                         "<label class='col-md-3'>ПАСПОРТ СЕРИЯ №:</label>" +
                         "<div class='col-md-6 search-input'>" +
-                        "<input type='text' class='form-control' placeholder='СЕРИЯ/НОМЕР' name='passport_number' value='" + (filterValues.passport_number || '') + "'>" +
+                        "<input type='text' class='form-control' placeholder='СЕРИЯ/НОМЕР' id='passport_number' name='passport_number' value='" + (filterValues.passport_number || '') + "'>" +
                         "</div>" +
                         "</div>" +
                         "<div class='admin'>" +
@@ -2356,11 +2372,25 @@
                         ОТМЕНА: {btnClass: 'btn-danger'},
                     },
                     onContentReady: function() {
+                        $(":input").inputmask();
                         $('#citizenship, #region, #hotel').selectize({
                             create: true,
                             sortField: 'text',
                             closeAfterSelect: true,
                             highlight: true,
+                        });
+
+                        $('#passport_number').on('input', function() {
+                            var maxLength = 20;
+                            $(this).val($(this).val().replace(/[^a-zA-Z0-9\s]/g, '').substring(0, maxLength)
+                                .toUpperCase()
+                            );
+                        });
+                        $('#surname, #last_name, #first_name').on('input', function() {
+                            var maxLength = 30;
+                            $(this).val($(this).val().replace(/[^a-zA-Z\s]/g, '').substring(0, maxLength)
+                                .toUpperCase()
+                            );
                         });
                     },
                 });
@@ -2387,11 +2417,11 @@
 
     {{-- Convert excel --}}
     <script>
-        $('#excelButton').on('click', function() {
-
+        $('#excelButton').on('click', function () {
             const table = $('#listok-table').DataTable();
 
-            const allData = table.rows().data().toArray();
+            const selectedData = table.rows({ selected: true }).data().toArray();
+
             const headers = [
                 "РЕГ.№",
                 "Ф.И.О ГОСТЯ",
@@ -2406,8 +2436,9 @@
                 "ТЕГ",
                 "АДМИНИСТРАТОР",
             ];
+
             const ws_data = [headers];
-            allData.forEach(row => {
+            selectedData.forEach(row => {
                 ws_data.push([
                     row.regNum || "",
                     row.guest || "",
@@ -2430,16 +2461,13 @@
             const colWidths = headers.map((header, index) => {
                 let maxLength = header.length;
                 ws_data.forEach(row => {
-                    const value = row[index] ||
-                        "";
+                    const value = row[index] || "";
                     const length = value.toString().length;
                     if (length > maxLength) {
                         maxLength = length;
                     }
                 });
-                return {
-                    wch: maxLength + 2
-                };
+                return { wch: maxLength + 2 };
             });
 
             ws['!cols'] = colWidths;

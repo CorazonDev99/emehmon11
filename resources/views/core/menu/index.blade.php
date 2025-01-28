@@ -3,8 +3,10 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.4/jquery-confirm.min.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
-
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.12.6/css/selectize.default.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         .nav-tabs .nav-link.active {
             background-color: #007bff;
@@ -52,9 +54,10 @@
 
 
     <style>
+
         .menu-level {
             background-color: #39a4fd !important;
-            padding: 10px
+            padding: 10px;
             margin-bottom: 5px;
             border-radius: 5px;
         }
@@ -100,14 +103,38 @@
         }
 
     </style>
+
+
 @endsection
 @section('script')
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.12.6/js/standalone/selectize.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.4/jquery-confirm.min.js"></script>
 
+    <script>
+        $(document).ready(function() {
+            $('#menu_icons').select2({
+                templateResult: formatIcon,
+                templateSelection: formatIcon
+            });
+
+            function formatIcon(icon) {
+                if (!icon.id) {
+                    return icon.text;
+                }
+                var $icon = $(
+                    '<span><i class="' + $(icon.element).data('icon') + '"></i> ' + icon.text + '</span>'
+                );
+                return $icon;
+            }
+        });
+    </script>
 
     <script>
         document.getElementById('topMenuTab').addEventListener('click', function (e) {
@@ -216,6 +243,7 @@
     <script>
         var menus = @json($menus);
         const modules = @json($modules);
+        const icons = @json($icons);
     </script>
 
     <script>
@@ -233,9 +261,8 @@
                     const menuIcons = menu.menu_icons;
                     const isActive = menu.active;
                     const entryBy = menu.entry_by;
-
                     const moduleOptions = modules.map(module => {
-                        const moduleName = module.module_name;
+                        const moduleName = module.module_title;
                         const selected = moduleName === menuModule ? 'selected' : '';
                         return `<option value="${moduleName}" ${selected}>${moduleName}</option>`;
                     }).join('');
@@ -305,12 +332,20 @@
                                     </div>
                                 </div>
 
-                                <div class="form-group row mt-3">
+                                 <div class="form-group row mt-3">
                                     <div class="col-md-3">
-                                        <label for="menuIcons">Иконка меню</label>
+                                        <label for="icons">Иконка меню</label>
                                     </div>
                                     <div class="col-md-7">
-                                        <input type="text" class="form-control" id="menuIcons" name="menu_icons" value="${menuIcons || ''}">
+                                        <select class="form-control" id="icons" name="icons">
+                                            <option value="" selected>-- НЕ ВЫБРАНО --</option>
+                                            ${icons.map(icon =>
+
+                                                `<option value="${icon.icon_name}" data-icon="${icon.icon_name}" ${`${icon.icon_name}` === menuIcons ? 'selected' : ''}>
+                                                    ${menuIcons}
+                                                </option>
+                                            `).join('')}
+                                        </select>
                                     </div>
                                 </div>
 
@@ -329,7 +364,7 @@
                                     const menuType = this.$content.find('#menuType').val();
                                     const menuUrl = this.$content.find('#menuUrl').val();
                                     const menuModule = this.$content.find('#module').val();
-                                    const menuIcons = this.$content.find('#menuIcons').val();
+                                    const menuIcons = this.$content.find('#icons').val();
                                     const active = this.$content.find('input[name="active"]:checked').val();
 
                                     $.ajax({
@@ -380,6 +415,37 @@
                         },
 
                         onContentReady: function () {
+                            $('#icons').selectize({
+                                render: {
+                                    option: function (item) {
+                                        return `
+                                            <div>
+                                                <i class="${item.dataIcon}"></i>
+                                                <span>${item.text}</span>
+                                            </div>
+                                            `;
+                                                                        },
+                                                                        item: function (item) {
+                                                                            return `
+                                            <div>
+                                                <i class="${item.dataIcon}"></i>
+                                                <span>${item.text}</span>
+                                            </div>
+                                            `;
+                                    }
+                                },
+                                searchField: 'text',
+                                labelField: 'text',
+                                valueField: 'value',
+                                options: icons.map(icon => ({
+                                    value: `${icon.icon_name}`,
+                                    text: icon.icon_name,
+                                    dataIcon: `${icon.icon_name}`
+                                }))
+                            });
+
+
+
                             const moduleContainer = this.$content.find('#module-container');
                             const menuTypeSelect = this.$content.find('#menuType');
 
@@ -543,7 +609,7 @@
                         <select class="form-control" id="module" name="module" required>
                             <option value="" selected>-- НЕ ВЫБРАНО --</option>
                             @foreach($modules as $module)
-                                <option value="{{ $module->module_name }}">{{ $module->module_name }}</option>
+                                <option value="{{ $module->module_title }}">{{ $module->module_title }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -552,20 +618,28 @@
                         <input type="text" class="form-control" id="url" name="url">
                     </div>
                     <div class="mb-3">
-                        <label for="menu_icons" class="form-label">Иконка</label>
-                        <input type="text" class="form-control" id="menu_icons" name="menu_icons" placeholder="fa fa-bars">
+                        <label for="menu_icons" class="form-label mb-1">Иконка</label>
+                        <select class="form-control" id="menu_icons" name="menu_icons">
+                            <option value="" selected>-- НЕ ВЫБРАНО --</option>
+                            @foreach($icons as $icon)
+                                <option value="fa  {{ $icon->icon_name }}" data-icon="fa {{ $icon->icon_name }}">{{ $icon->icon_name }}</option>
+                            @endforeach
+                        </select>
                     </div>
-                    <fieldset class="mb-3">
-                        <label class="form-label">Cтатус</label><br>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="active" id="active" value="1" checked>
-                            <label class="form-check-label" for="active">Активный</label>
+                    <div class="mb-3">
+                        <label class="form-label">Статус</label>
+                        <div class="col-md-7">
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="active" id="active" value="1">
+                                <label class="form-check-label" for="active">Активный</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="active" id="inactive" value="0">
+                                <label class="form-check-label" for="inactive">Неактивный</label>
+                            </div>
                         </div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="active" id="inactive" value="0">
-                            <label class="form-check-label" for="inactive">Неактивный</label>
-                        </div>
-                    </fieldset>
+                    </div>
+
                     <button type="submit" class="btn btn-success mt-3">Создать</button>
                 </form>
             </div>

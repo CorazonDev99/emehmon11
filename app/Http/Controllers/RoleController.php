@@ -161,8 +161,17 @@ class RoleController extends Controller
                 ]);
             }
 
-            $permissionsData = $request->input('permissions', []);
+            DB::table('cms_privileges_roles')
+                ->where('id_cms_privileges', $id)
+                ->update([
+                    'is_visible' => 0,
+                    'is_create' => 0,
+                    'is_read' => 0,
+                    'is_edit' => 0,
+                    'is_delete' => 0,
+                ]);
 
+            $permissionsData = $request->input('permissions', []);
             foreach ($permissionsData as $moduleId => $permissions) {
                 $existing = DB::table('cms_privileges_roles')
                     ->where('id_cms_privileges', $id)
