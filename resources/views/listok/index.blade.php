@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/selectize@0.12.6/dist/css/selectize.default.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@eonasdan/tempus-dominus@6/build/css/tempus-dominus.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.13.3/css/selectize.default.min.css" />
-
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-contextmenu/2.9.2/jquery.contextMenu.min.css">
     <style>
         #info {
             overflow-x: hidden;
@@ -210,28 +210,35 @@
             background-color: #fff;
             border: 1px solid #ccc;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-            padding: 10px;
             border-radius: 4px;
         }
 
-
-        #context-menu ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
+        #context-menu.show {
+            opacity: 1;
+            pointer-events: auto;
         }
 
-        #context-menu ul li {
-            padding: 10px;
-            cursor: pointer;
+        #context-menu .menu-action {
+            display: block;
+            padding: 4px;
+            color: #333;
+            font-size: 14px;
+            text-decoration: none;
+            border-radius: 4px;
+            transition: background-color 0.2s, color 0.2s;
         }
 
-        #context-menu ul li:hover {
-            background-color: #f0f0f0;
+        #context-menu .menu-action:hover {
+            background-color: #007bff;
+            color: #fff;
         }
-    </style>
+         </style>
 
     <style>
+        #listok-table tbody tr.selected {
+            background-color: #c2eeff;
+            font-weight: bold;
+        }
         #custom-loading {
             position: absolute;
             top: 50%;
@@ -302,10 +309,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.4/jquery-confirm.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/selectize@0.12.6/dist/js/standalone/selectize.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.3/xlsx.full.min.js"></script>
-
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-contextmenu/2.9.2/jquery.contextMenu.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-contextmenu/2.9.2/jquery.ui.position.min.js"></script>
     <script>
-        var childrenData = @json($children);
+        var childrenData = @json($childrens);
         var feedbacks = @json($feedbacks);
         var roomhistory = @json($room_history);
         var bronroom = @json($bron_room);
@@ -347,7 +354,7 @@
                     {
                         data: 'regNum',
                         name: 'tb_listok.regNum',
-                        sClass: 'dt-center',
+                        sClass: 'dt-start',
                         render: function(data, type, row) {
                             return `<a class="btn btn-sm btn-outline-primary p-1 text-bold open-menu-btn" data-id="${row.id}">${data}</a>`;
                         }
@@ -356,7 +363,7 @@
                     {
                         data: 'guest',
                         name: 'guest',
-                        sClass: 'dt-center',
+                        sClass: 'dt-start',
 
                     },
                     {
@@ -835,13 +842,34 @@
                                                 </tr>
                                                 <tr>
                                                     <td colspan="5" style="border: 1px solid black; padding: 5px;"><strong>10. Вместе с ним/ней прибыли дети до 16 лет</strong></td>
-                                                </tr>
+                                                </tr>`;
+                                        const filteredChildren = childrenData.filter(child => child.id === row.id);
+                                        if (filteredChildren.length > 0) {
+                                            printContent += `
+                                            <tr>
+                                                <td><strong>Имя</strong></td>
+                                                <td colspan="2"><strong>Дата рождения</strong></td>
+                                                <td><strong>Пол</strong></td>
+                                            </tr>
+                                        `;
+
+                                                                        filteredChildren.forEach(child => {
+                                                                            printContent += `
                                                 <tr>
-                                                    <th style="border: 1px solid black; padding: 5px;"><strong>Имя</strong></th>
-                                                    <th style="border: 1px solid black; padding: 5px;"><strong>Пол</strong></th>
-                                                    <th colspan="3" style="border: 1px solid black; padding: 5px;"><strong>Дата рождения</strong></th>
+                                                    <td>${child.child_name}</td>
+                                                    <td colspan="2">${child.child_dateBirth ? new Date(child.child_dateBirth).toLocaleDateString('ru-RU') : '--/--/----'}</td>
+                                                    <td>${child.child_gender}</td>
                                                 </tr>
-                                                <tr>
+                                            `;
+                                                                        });
+                                                                    } else {
+                                                                        printContent += `
+                                            <tr>
+                                                <td colspan="5" style="text-align: center;"><strong>--нет--</strong></td>
+                                            </tr>
+                                        `;
+                                        }
+                                        printContent += `<tr>
                                                     <td style="border: 1px solid black; padding: 5px;"><strong>11. ДАТА ПРИБЫТИЯ:</strong></td>
                                                     <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.dt || '&nbsp;'}</td>
                                                 </tr>
@@ -956,91 +984,127 @@
         $(document).ready(function() {
             var table = $('#listok-table').DataTable();
 
-            $('#listok-table tbody').on('contextmenu', 'tr', function(e) {
-
-                e.preventDefault();
-
-                var row = $(this);
-                var data = table.row(row).data();
-
-                if (!row.hasClass('selected')) {
-                    table.row(row).select();
-                }
-
-                const $menu = $('#context-menu');
-                const menuWidth = $menu.outerWidth();
-                const menuHeight = $menu.outerHeight();
-                const windowWidth = $(window).width();
-                const windowHeight = $(window).height();
-
-                let top = e.pageY + 5;
-                let left = e.pageX + 5;
-
-                if (top + menuHeight > windowHeight) {
-                    top = e.pageY - menuHeight - 5;
-                }
-                if (left + menuWidth > windowWidth) {
-                    left = e.pageX - menuWidth - 5;
-                }
-
-                $menu.css({
-                        top: top + 'px',
-                        left: left + 'px',
-                        display: 'block',
-                    })
-
-                    .show()
-                    .data('rowData', data);
+            $('#listok-table tbody').on('click', 'tr', function() {
+                $(this).toggleClass('selected');
             });
 
-            $(document).on('click', function(e) {
-                if (!$(e.target).closest('#context-menu').length) {
-                    $('#context-menu').hide();
+            $.contextMenu({
+                selector: '#listok-table tbody tr',
+                callback: function(key, options) {
+                    var row = options.$trigger;
+                    var data = table.row(row).data();
+
+                    if (data) {
+                        handleAction(key, data);
+                    } else {
+                        console.warn('No data available for this row.');
+                    }
+                },
+                items: {
+                    copy: {
+                        name: "Копировать (в буфер обмена)",
+                        icon: "fas fa-copy",
+                        className: "menu-action",
+                        data: { action: "copy" }
+                    },
+                    info: {
+                        name: "Сведения о госте",
+                        icon: "fas fa-info-circle",
+                        className: "menu-action",
+                        data: { action: "info" }
+                    },
+                    checkout: {
+                        name: "CheckOut",
+                        icon: "fas fa-plane",
+                        className: "menu-action",
+                        data: { action: "checkout" }
+                    },
+                    move: {
+                        name: "Переместить в другой номер",
+                        icon: "fas fa-network-wired",
+                        className: "menu-action",
+                        data: { action: "move" }
+                    },
+                    status: {
+                        name: "Изменить статус оплаты",
+                        icon: "fas fa-calculator",
+                        className: "menu-action",
+                        data: { action: "status" }
+                    },
+                    feedback: {
+                        name: "Добавить отзыв",
+                        icon: "fas fa-comment-dots",
+                        className: "menu-action",
+                        data: { action: "feedback" }
+                    },
+                    print: {
+                        name: "Печать листка прибытия",
+                        icon: "fas fa-print",
+                        className: "menu-action",
+                        data: { action: "print" }
+                    },
+                    tag: {
+                        name: "Присвоить тег",
+                        icon: "fas fa-tag",
+                        className: "menu-action",
+                        data: { action: "tag" }
+                    },
+                    deleteTag: {
+                        name: "Удалить тег",
+                        icon: "fas fa-times",
+                        className: "menu-action",
+                        data: { action: "deleteTag" }
+                    },
+                    extendVisa: {
+                        name: "Продлить визу",
+                        icon: "fas fa-id-card",
+                        className: "menu-action",
+                        data: { action: "extendVisa" }
+                    }
+                },
+
+                events: {
+                    show: function(options) {
+                        var row = options.$trigger;
+
+                        if (!row.hasClass('selected')) {
+                            row.addClass('selected');
+                        }
+
+                        table.row(row).select();
+                    }
                 }
             });
 
-            $('#context-menu').on('click', '.menu-action', function(e) {
-                e.preventDefault();
 
-                var action = $(this).data('action');
-                var rowData = $('#context-menu').data('rowData');
-
-                handleAction(action, rowData);
-                $('#context-menu').hide();
-            });
-        });
-
-        function handleAction(action, rowData) {
-            const selectedRows = $('#listok-table').DataTable().rows({
-                selected: true
-            }).data();
-            let textToCopy = '';
-            for (let i = 0; i < selectedRows.length; i++) {
-                const row = selectedRows[i];
-                textToCopy += `
+            function handleAction(action, rowData) {
+                let textToCopy = '';
+                for (let i = 0; i < rowData.length; i++) {
+                    const row = rowData[i];
+                    textToCopy += `
                     Гость: ${row.guest}
                     Регистрационный номер: ${row.regNum}
                     Дата заезда: ${row.datekpp}
                     Гостиница: ${row.htl}
                 `;
-                if (i < selectedRows.length - 1) {
-                    textToCopy += '\n---\n';
+                    if (i < rowData.length - 1) {
+                        textToCopy += '\n---\n';
+                    }
                 }
-            }
-            switch (action) {
-                case 'copy':
-                    navigator.clipboard.writeText(textToCopy);
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Данные скопированы!',
-                    });
-                    break;
+                switch (action) {
+                    case 'copy':
+                        navigator.clipboard.writeText(textToCopy);
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Данные скопированы!',
+                        });
+                        break;
 
-                case 'info':
-                    var filteredFeedbacks = feedbacks.filter(feedback => feedback.pspNumber == rowData.passportNumber);
-                    const isInBlackList = filteredFeedbacks.some(feedback => feedback.inBlack === 1);
+                    case 'info':
+                        var filteredFeedbacks = feedbacks.filter(feedback => feedback.pspNumber == rowData.passportNumber);
+                        const isInBlackList = filteredFeedbacks.some(feedback => feedback.inBlack === 1);
 
-                    const modalHtml = `
+                        const modalHtml = `
                         <div class="nav nav-tabs" id="guestInfoTabs" role="tablist">
                             <ul class="nav nav-tabs col-md-12">
                                 <li class="nav-item">
@@ -1090,73 +1154,71 @@
                         </div>
                     `;
 
-                    $.confirm({
-                        title: `<i class="fa fa-suitcase"></i> Информация о ${rowData.guest}`,
-                        content: modalHtml,
-                        boxWidth: '800px',
-                        useBootstrap: false,
-                        type: 'blue',
-                        buttons: {
-                            ok: {
-                                text: 'ОТМЕНА',
-                                btnClass: 'btn-danger',
+                        $.confirm({
+                            title: `<i class="fa fa-suitcase"></i> Информация о ${rowData.guest}`,
+                            content: modalHtml,
+                            boxWidth: '800px',
+                            useBootstrap: false,
+                            type: 'blue',
+                            buttons: {
+                                ok: {
+                                    text: 'ОТМЕНА',
+                                    btnClass: 'btn-danger',
+                                }
+                            },
+                            onOpen: function () {
+                                $('#guestInfoTabs .nav-link').on('click', function (e) {
+                                    e.preventDefault();
+                                    const targetTab = $(this).data('tab');
+                                    $('#guestInfoTabs .tab-pane').hide();
+                                    $(`#${targetTab}`).show();
+                                    $('#guestInfoTabs .nav-link').removeClass('active');
+                                    $(this).addClass('active');
+                                });
                             }
-                        },
-                        onOpen: function () {
-                            $('#guestInfoTabs .nav-link').on('click', function (e) {
-                                e.preventDefault();
-                                const targetTab = $(this).data('tab');
-                                $('#guestInfoTabs .tab-pane').hide();
-                                $(`#${targetTab}`).show();
-                                $('#guestInfoTabs .nav-link').removeClass('active');
-                                $(this).addClass('active');
-                            });
-                        }
-                    });
-                    break;
-
-
-
-                case 'checkout':
-                    let table = $('#listok-table').DataTable();
-                    let row = table.row(function(idx, data, node) {
-                        return data.id === rowData.id;
-                    });
-                    if (row.node()) {
-                        $(row.node()).addClass('selected');
-                    } else {
-                        console.warn(`Строка с ID ${rowData.id} не найдена.`);
-                    }
-                    $('#checkout').trigger('click');
-                    break;
-
-                case 'move':
-                    const selectedMoveRows = $('#listok-table').DataTable().rows({
-                        selected: true
-                    }).data();
-
-                    if (selectedMoveRows.length !== 1) {
-                        Swal.fire({
-                            icon: 'warning',
-                            title: '',
-                            text: 'Пожалуйста, выберите только одного гостя для перемещения.',
-                            confirmButtonText: 'ОК',
-                            confirmButtonColor: '#3085d6',
                         });
                         break;
-                    }
+
+                    case 'checkout':
+                        let table = $('#listok-table').DataTable();
+                        let row = table.row(function(idx, data, node) {
+                            return data.id === rowData.id;
+                        });
+                        if (row.node()) {
+                            $(row.node()).addClass('selected');
+                        } else {
+                            console.warn(`Строка с ID ${rowData.id} не найдена.`);
+                        }
+                        $('#checkout').trigger('click');
+                        break;
+
+                    case 'move':
+                        const selectedMoveRows = $('#listok-table').DataTable().rows({
+                            selected: true
+                        }).data();
+
+                        if (selectedMoveRows.length !== 1) {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: '',
+                                text: 'Пожалуйста, выберите только одного гостя для перемещения.',
+                                confirmButtonText: 'ОК',
+                                confirmButtonColor: '#3085d6',
+                            });
+                            break;
+                        }
 
 
-                    const selectedGuestId = selectedMoveRows[0].id;
-                    const selectedHtlId = selectedMoveRows[0].id_hotel;
-                    const selectedAdmId = selectedMoveRows[0].entry_by;
-                    const selectedGuest = selectedMoveRows[0].guest;
-                    const selectedOldRoomNum = selectedMoveRows[0].room;
+                        const selectedGuestId = selectedMoveRows[0].id;
+                        const selectedHtlId = selectedMoveRows[0].id_hotel;
+                        const selectedAdmId = selectedMoveRows[0].entry_by;
+                        const selectedGuest = selectedMoveRows[0].guest;
+                        const selectedOldRoomNum = selectedMoveRows[0].room;
 
-                    $.confirm({
-                        title: '',
-                        type: 'blue',
-                        content: `
+                        $.confirm({
+                            title: '',
+                            type: 'blue',
+                            content: `
                                     <div class="modal-dialog">
                                         <div class="modal-content">
                                             <div class="modal-header">
@@ -1175,78 +1237,115 @@
                                                     <select id="id_room" name="id_room" class="select2 form-select" required>
                                                         <option value="">--- НЕ ВЫБРАНО ---</option>
                                                         @foreach ($rooms as $room)
-                                                <option value="{{ $room->room_number }}">
+                            <option value="{{ $room->room_number }}">
                                                             {{ $room->room_number }} - {{ $room->room_type }};
                                                             {{ $room->room_floor }} - этаж;
                                                            {{ $room->living_room }}/{{ $room->beds }}
-                                                @if (!empty($room->tag))
-                                                ;({{ $room->tag }})
+                            @if (!empty($room->tag))
+                            ;({{ $room->tag }})
                                                             @endif
-                                                </option>
-                                                @endforeach
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                        `,
-                        buttons: {
-                            confirm: {
-                                text: 'Переместить',
-                                btnClass: 'btn-green',
-                                action: function() {
-                                    const room_number = $('#id_room').val();
-                                    if (!room_number) {
-                                        $.alert('Пожалуйста, выберите номер комнаты.');
-                                        return false;
-                                    }
-                                    $.ajax({
-                                        url: '/listok/move-to-room',
-                                        type: 'POST',
-                                        data: {
-                                            _token: '{{ csrf_token() }}',
-                                            guest_id: selectedGuestId,
-                                            hotel_id: selectedHtlId,
-                                            entry_by: selectedAdmId,
-                                            guest: selectedGuest,
-                                            old_room_number: selectedOldRoomNum,
-                                            room_number: room_number
-                                        },
-                                        success: function(response) {
-                                            if (response.status === 'success') {
-                                                Swal.fire({
-                                                    icon: 'success',
-                                                    title: response.message,
-                                                    showConfirmButton: false,
-                                                    timer: 1500
-                                                });
-                                                window.location.reload();
-                                            } else {
-                                                $.alert(response.message);
-                                            }
-                                        },
-                                        error: function() {
-                                            $.alert('Произошла ошибка при перемещении гостя.');
+                            </option>
+@endforeach
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+`,
+                            buttons: {
+                                confirm: {
+                                    text: 'Переместить',
+                                    btnClass: 'btn-green',
+                                    action: function() {
+                                        const room_number = $('#id_room').val();
+                                        if (!room_number) {
+                                            $.alert('Пожалуйста, выберите номер комнаты.');
+                                            return false;
                                         }
-                                    });
+                                        $.ajax({
+                                            url: '/listok/move-to-room',
+                                            type: 'POST',
+                                            data: {
+                                                _token: '{{ csrf_token() }}',
+                                                guest_id: selectedGuestId,
+                                                hotel_id: selectedHtlId,
+                                                entry_by: selectedAdmId,
+                                                guest: selectedGuest,
+                                                old_room_number: selectedOldRoomNum,
+                                                room_number: room_number
+                                            },
+                                            success: function(response) {
+                                                if (response.status === 'success') {
+                                                    Swal.fire({
+                                                        icon: 'success',
+                                                        title: response.message,
+                                                        showConfirmButton: false,
+                                                        timer: 1500
+                                                    });
+                                                    window.location.reload();
+                                                } else {
+                                                    $.alert(response.message);
+                                                }
+                                            },
+                                            error: function() {
+                                                $.alert('Произошла ошибка при перемещении гостя.');
+                                            }
+                                        });
+                                    }
+                                },
+                                cancel: {
+                                    text: 'Отмена',
+                                    btnClass: 'btn-danger'
                                 }
                             },
-                            cancel: {
-                                text: 'Отмена',
-                                btnClass: 'btn-danger'
-                            }
-                        },
-                    });
-                    break;
+                            onContentReady: function() {
+                                const roomSelect = document.getElementById("id_room");
+                                const modalBox = this.$el;
 
-                case 'status':
-                    const selectedStatusRows = $('#listok-table').DataTable().rows({
-                        selected: true
-                    }).data();
-                    $.confirm({
-                        title: 'Статус оплаты',
-                        type: 'blue',
-                        content: `
+                                if (!roomSelect) {
+                                    console.error("Элемент #id_room не найден!");
+                                    return;
+                                }
+
+                                roomSelect.addEventListener("change", function () {
+                                    const selectedOption = roomSelect.options[roomSelect.selectedIndex].text;
+                                    const match = selectedOption.match(/(\d+)\/(\d+)/);
+
+                                    if (match) {
+                                        const livingRoom = parseInt(match[1]);
+                                        const beds = parseInt(match[2]);
+
+                                        if (livingRoom === beds) {
+                                            modalBox.css("z-index", "1000");
+
+                                            Swal.fire({
+                                                icon: "warning",
+                                                title: "Комната заполнена!",
+                                                text: "Выберите другую комнату.",
+                                                confirmButtonColor: "#d33"
+                                            }).then(() => {
+                                                modalBox.css("z-index", "99999");
+                                            });
+
+                                            roomSelect.value = "";
+                                        }
+                                    } else {
+                                        console.warn("Не удалось извлечь данные о комнате из выбранной опции.");
+                                    }
+                                });
+                            }
+
+                        });
+                        break;
+
+                    case 'status':
+                        const selectedStatusRows = $('#listok-table').DataTable().rows({
+                            selected: true
+                        }).data();
+                        $.confirm({
+                            title: 'Статус оплаты',
+                            type: 'blue',
+                            content: `
                                 <div class="modal-dialog">
                                     <div class="modal-content">
                                         <div class="modal-body">
@@ -1275,115 +1374,106 @@
                                     </div>
                                 </div>
                             `,
-                        buttons: {
-                            confirm: {
-                                text: 'Установить',
-                                btnClass: 'btn-green',
-                                action: function() {
-                                    const paymentStatus = $('#paymentStatus').val();
-                                    const payment = $('#paymentAmount').val();
-                                    if (!payment || paymentStatus == '0') {
-                                        $.alert('Пожалуйста, заполните все поля.');
-                                        return false;
-                                    }
-
-                                    const selectedIds = [];
-                                    selectedStatusRows.each(function(rowData) {
-                                        selectedIds.push(rowData.id);
-                                    });
-
-                                    $.ajax({
-                                        url: '/listok/status-payment',
-                                        type: 'POST',
-                                        data: {
-                                            _token: '{{ csrf_token() }}',
-                                            guest_ids: selectedIds,
-                                            paymentStatus: paymentStatus,
-                                            payment: payment,
-                                        },
-                                        success: function(response) {
-                                            if (response.status === 'success') {
-                                                Swal.fire({
-                                                    icon: 'success',
-                                                    title: response.message,
-                                                    showConfirmButton: false,
-                                                    timer: 1500
-                                                });
-                                                $('#listok-table').DataTable().ajax.reload(null,
-                                                    false);
-                                            } else {
-                                                $.alert(response.message);
-                                            }
-                                        },
-                                        error: function() {
-                                            $.alert('Произошла ошибка при обновлении данных.');
+                            buttons: {
+                                confirm: {
+                                    text: 'Установить',
+                                    btnClass: 'btn-green',
+                                    action: function() {
+                                        const paymentStatus = $('#paymentStatus').val();
+                                        const payment = $('#paymentAmount').val();
+                                        if (!payment || paymentStatus == '0') {
+                                            $.alert('Пожалуйста, заполните все поля.');
+                                            return false;
                                         }
-                                    });
-                                }
-                            },
-                            cancel: {
-                                text: 'Отмена',
-                                btnClass: 'btn-danger',
-                            }
-                        }
-                    });
-                    break;
 
+                                        const selectedIds = [];
+                                        selectedStatusRows.each(function(rowData) {
+                                            selectedIds.push(rowData.id);
+                                        });
 
-
-                case 'print':
-
-                    const selectedPrintRows = $('#listok-table').DataTable().rows({
-                        selected: true
-                    }).data();
-                    let rowsPerPage = 2;
-                    let printContent = `
-                                         <!DOCTYPE html>
-                                        <html lang="ru">
-                                        <head>
-                                            <meta charset="UTF-8">
-                                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                                            <style>
-                                             table {
-                                                margin-top:10px !important;
-                                                width: 100%;
-                                                border-collapse: collapse;
-                                                table-layout: fixed;
-                                            }
-                                            .qrcode{
-                                                margin-top:10px !important;
-                                                margin-left: 27px !important;
+                                        $.ajax({
+                                            url: '/listok/status-payment',
+                                            type: 'POST',
+                                            data: {
+                                                _token: '{{ csrf_token() }}',
+                                                guest_ids: selectedIds,
+                                                paymentStatus: paymentStatus,
+                                                payment: payment,
+                                            },
+                                            success: function(response) {
+                                                if (response.status === 'success') {
+                                                    Swal.fire({
+                                                        icon: 'success',
+                                                        title: response.message,
+                                                        showConfirmButton: false,
+                                                        timer: 1500
+                                                    });
+                                                    $('#listok-table').DataTable().ajax.reload(null,
+                                                        false);
+                                                } else {
+                                                    $.alert(response.message);
                                                 }
-
-                                            table, th, td {
-
-                                                border: 1px solid #000;
+                                            },
+                                            error: function() {
+                                                $.alert('Произошла ошибка при обновлении данных.');
                                             }
+                                        });
+                                    }
+                                },
+                                cancel: {
+                                    text: 'Отмена',
+                                    btnClass: 'btn-danger',
+                                }
+                            }
+                        });
+                        break;
 
-                                            th, td {
-                                                padding: 5px;
-                                                text-align: left;
-                                                height: 15px;
-                                                vertical-align: middle;
-                                            }
+                    case 'print':
+                        const selectedPrintRows = $('#listok-table').DataTable().rows({
+                            selected: true
+                        }).data();
+                        let rowsPerPage = 2;
+                        let printContent = `
+        <!DOCTYPE html>
+        <html lang="ru">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                table {
+                    margin-top: 10px !important;
+                    width: 100%;
+                    border-collapse: collapse;
+                    table-layout: fixed;
+                }
+                .qrcode {
+                    margin-top: 10px !important;
+                    margin-left: 27px !important;
+                }
+                table, th, td {
+                    border: 1px solid #000;
+                }
+                th, td {
+                    padding: 5px;
+                    text-align: left;
+                    height: 15px;
+                    vertical-align: middle;
+                }
+                th:nth-child(1), td:nth-child(1) { width: 30%; }
+                th:nth-child(2), td:nth-child(2) { width: 50%; }
+                th:nth-child(3), td:nth-child(3) { width: 20%; }
+            </style>
+        </head>
+        <body>
+    `;
 
-                                            th:nth-child(1), td:nth-child(1) { width: 30%; }
-                                            th:nth-child(2), td:nth-child(2) { width: 50%; }
-                                            th:nth-child(3), td:nth-child(3) { width: 20%;}
+                        let currentCount = 0;
+                        $.each(selectedPrintRows, function(index, row) {
+                            if (currentCount === 0) {
+                                printContent += `<div class="page">`;
+                            }
 
-                                            </style>
-
-                                        </head>
-                                        <body>
-                                    `;
-
-                    let currentCount = 0;
-                    $.each(selectedPrintRows, function(index, row) {
-                        if (currentCount === 0) {
-                            printContent += `<div class="page">`;
-                        }
-
-                        printContent += `
+                            printContent += `
             <table id="childrenTable" style="width: 100%; border: 1px solid black; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px;">
                 <tr>
                     <td colspan="1" style="border: 1px solid black; text-align: center; padding: 5px;">
@@ -1439,11 +1529,37 @@
                 <tr>
                     <td colspan="5" style="border: 1px solid black; padding: 5px;"><strong>10. Вместе с ним/ней прибыли дети до 16 лет</strong></td>
                 </tr>
+        `;
+
+                            const filteredChildren = childrenData.filter(child => child.id === row.id);
+
+                            if (filteredChildren.length > 0) {
+                                printContent += `
                 <tr>
-                    <th style="border: 1px solid black; padding: 5px;"><strong>Имя</strong></th>
-                    <th style="border: 1px solid black; padding: 5px;"><strong>Пол</strong></th>
-                    <th colspan="3" style="border: 1px solid black; padding: 5px;"><strong>Дата рождения</strong></th>
+                    <td><strong>Имя</strong></td>
+                    <td colspan="2"><strong>Дата рождения</strong></td>
+                    <td><strong>Пол</strong></td>
                 </tr>
+            `;
+
+                                filteredChildren.forEach(child => {
+                                    printContent += `
+                    <tr>
+                        <td>${child.child_name}</td>
+                        <td colspan="2">${child.child_dateBirth ? new Date(child.child_dateBirth).toLocaleDateString('ru-RU') : '--/--/----'}</td>
+                        <td>${child.child_gender}</td>
+                    </tr>
+                `;
+                                });
+                            } else {
+                                printContent += `
+                <tr>
+                    <td colspan="5" style="text-align: center;"><strong>--нет--</strong></td>
+                </tr>
+            `;
+                            }
+
+                            printContent += `
                 <tr>
                     <td style="border: 1px solid black; padding: 5px;"><strong>11. ДАТА ПРИБЫТИЯ:</strong></td>
                     <td colspan="4" style="border: 1px solid black; padding: 5px;">${row.dt || '&nbsp;'}</td>
@@ -1459,76 +1575,80 @@
             </table>
         `;
 
-                        currentCount++;
-                        if (currentCount === rowsPerPage) {
-                            printContent += `</div>`;
-                            currentCount = 0;
-                        }
-                    });
-
-                    if (currentCount > 0) {
-                        printContent += `</div>`;
-                    }
-
-                    let iframe = document.createElement('iframe');
-                    iframe.style.position = 'absolute';
-                    iframe.style.width = '0';
-                    iframe.style.height = '0';
-                    iframe.style.border = 'none';
-                    document.body.appendChild(iframe);
-
-                    iframe.contentWindow.document.open();
-                    iframe.contentWindow.document.write(printContent);
-                    iframe.contentWindow.document.close();
-
-                    iframe.onload = function() {
-                        $.each(selectedPrintRows, function(index, row) {
-                            var appUrl = '{{ env('APP_URL') }}';
-                            const url = appUrl + `/listok/identify-qr/${row.rowhash}`;
-                            let qrElement = iframe.contentWindow.document.getElementById(`qrcode-${row.regNum}`);
-                            if (qrElement) {
-                                new QRCode(qrElement, {
-                                    text: url,
-                                    width: 80,
-                                    height: 80
-                                });
-                            } else {
-                                console.error(`Element qrcode-${row.regNum} not found`);
+                            currentCount++;
+                            if (currentCount === rowsPerPage) {
+                                printContent += `</div>`;
+                                currentCount = 0;
                             }
                         });
 
-                        setTimeout(function() {
-                            let printWindow = iframe.contentWindow;
-                            printWindow.onafterprint = function() {
-                                document.body.removeChild(iframe);
-                            };
-                            printWindow.focus();
-                            printWindow.print();
-                        }, 500);
+                        if (currentCount > 0) {
+                            printContent += `</div>`;
+                        }
 
-                    };
-                    break;
+                        let iframe = document.createElement('iframe');
+                        iframe.style.position = 'absolute';
+                        iframe.style.width = '0';
+                        iframe.style.height = '0';
+                        iframe.style.border = 'none';
+                        document.body.appendChild(iframe);
 
+                        iframe.contentWindow.document.open();
+                        iframe.contentWindow.document.write(printContent);
+                        iframe.contentWindow.document.close();
 
-                case 'feedback':
-                    const selectedFeedbackRows = $('#listok-table').DataTable().rows({
-                        selected: true
-                    }).data();
+                        iframe.onload = function() {
+                            $.each(selectedPrintRows, function(index, row) {
+                                var appUrl = '{{ env('APP_URL') }}';
+                                const url = appUrl + `/listok/identify-qr/${row.rowhash}`;
+                                let qrElement = iframe.contentWindow.document.getElementById(`qrcode-${row.regNum}`);
+                                if (qrElement) {
+                                    new QRCode(qrElement, {
+                                        text: url,
+                                        width: 80,
+                                        height: 80
+                                    });
+                                } else {
+                                    console.error(`Element qrcode-${row.regNum} not found`);
+                                }
+                            });
 
-                    if (selectedFeedbackRows.length !== 1) {
-                        $.alert('Выберите только одного гостя для отзыва!');
+                            setTimeout(function() {
+                                let printWindow = iframe.contentWindow;
+                                printWindow.onafterprint = function() {
+                                    document.body.removeChild(iframe);
+                                };
+                                printWindow.focus();
+                                printWindow.print();
+                            }, 500);
+                        };
                         break;
-                    }
 
-                    const feedbackdata = selectedFeedbackRows[0];
+                    case 'feedback':
+                        const selectedFeedbackRows = $('#listok-table').DataTable().rows({
+                            selected: true
+                        }).data();
 
-                    $.confirm({
-                        title: 'Добавить Отзыв',
-                        type: "blue",
-                        content: `
-                            <p style="margin-left:20px;">${feedbackdata.ctz} ${feedbackdata.guest}</p>
+
+                        if (selectedFeedbackRows.length !== 1) {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: '',
+                                text: 'Пожалуйста, выберите только одного гостя для отзыва!',
+                                confirmButtonText: 'ОК',
+                                confirmButtonColor: '#3085d6',
+                            });
+                            break;
+                        }
+                        const feedbackdata = selectedFeedbackRows[0];
+
+                        $.confirm({
+                            title: 'Добавить Отзыв',
+                            type: "blue",
+                            content: `
+                            <p>${feedbackdata.ctz} ${feedbackdata.guest}</p>
                             <textarea class="form-control" id="feedbackText" rows="4" placeholder="Введите отзыв"></textarea>
-                            <div class="form-check mt-3">
+                            <div class="mt-3">
                                 <label class="form-label">Черный список:</label>
                                 <div>
                                     <input type="radio" name="blacklist" value="yes" id="blacklistYes">
@@ -1538,79 +1658,76 @@
                                 </div>
                             </div>
                         `,
-                        buttons: {
-                            ДОБАВИТЬ: {
-                                btnClass: 'btn-green',
-                                action: function() {
-                                    const feedback = this.$content.find('#feedbackText').val();
-                                    const blacklistStatus = this.$content.find(
-                                        'input[name="blacklist"]:checked').val();
+                            buttons: {
+                                ДОБАВИТЬ: {
+                                    btnClass: 'btn-green',
+                                    action: function() {
+                                        const feedback = this.$content.find('#feedbackText').val();
+                                        const blacklistStatus = this.$content.find(
+                                            'input[name="blacklist"]:checked').val();
 
-                                    if (!feedback.trim()) {
-                                        $.alert('Пожалуйста, введите отзыв!');
-                                        return false;
-                                    }
+                                        if (!feedback.trim()) {
+                                            $.alert('Пожалуйста, введите отзыв!');
+                                            return false;
+                                        }
 
-                                    $.ajax({
-                                        url: '/listok/feedback',
-                                        method: 'POST',
-                                        data: {
-                                            id_citizen: rowData.id_citizen,
-                                            passportSerial: feedbackdata.passportSerial,
-                                            passportNumber: feedbackdata.passportNumber,
-                                            entry_by: feedbackdata.entry_by,
-                                            person_id: feedbackdata.id_person,
-                                            feedback: feedback,
-                                            blacklist: blacklistStatus,
-                                            _token: $('meta[name="csrf-token"]').attr('content')
-                                        },
-                                        success: function(response) {
-                                            if (response.success) {
-                                                Swal.fire({
-                                                    icon: 'success',
-                                                    title: response.message,
-                                                    showConfirmButton: false,
-                                                    timer: 1500
-                                                });
-                                                window.location.reload();
-                                            } else {
+                                        $.ajax({
+                                            url: '/listok/feedback',
+                                            method: 'POST',
+                                            data: {
+                                                id_citizen: rowData.id_citizen,
+                                                passportSerial: feedbackdata.passportSerial,
+                                                passportNumber: feedbackdata.passportNumber,
+                                                entry_by: feedbackdata.entry_by,
+                                                person_id: feedbackdata.id_person,
+                                                feedback: feedback,
+                                                blacklist: blacklistStatus,
+                                                _token: $('meta[name="csrf-token"]').attr('content')
+                                            },
+                                            success: function(response) {
+                                                if (response.success) {
+                                                    Swal.fire({
+                                                        icon: 'success',
+                                                        title: response.message,
+                                                        showConfirmButton: false,
+                                                        timer: 1500
+                                                    });
+                                                    window.location.reload();
+                                                } else {
+                                                    $.alert({
+                                                        title: 'Ошибка!',
+                                                        content: response.message ||
+                                                            'Ошибка добавления отзыва!',
+                                                        type: 'red'
+                                                    });
+                                                }
+                                            },
+                                            error: function() {
                                                 $.alert({
                                                     title: 'Ошибка!',
-                                                    content: response.message ||
-                                                        'Ошибка добавления отзыва!',
+                                                    content: 'Ошибка сервера!',
                                                     type: 'red'
                                                 });
                                             }
-                                        },
-                                        error: function() {
-                                            $.alert({
-                                                title: 'Ошибка!',
-                                                content: 'Ошибка сервера!',
-                                                type: 'red'
-                                            });
-                                        }
-                                    });
+                                        });
+                                    }
+                                },
+                                ОТМЕНА: {
+                                    btnClass: 'btn-danger',
                                 }
-                            },
-                            ОТМЕНА: {
-                                btnClass: 'btn-danger',
                             }
-                        }
-                    });
-                    break;
+                        });
+                        break;
 
+                    case 'tag':
+                        const selectedTagRows = $('#listok-table').DataTable().rows({
+                            selected: true
+                        }).data();
 
-
-
-                case 'tag':
-                    const selectedTagRows = $('#listok-table').DataTable().rows({
-                        selected: true
-                    }).data();
-
-                    $.confirm({
-                        title: 'Присваивание тега для гостей',
-                        type: 'blue',
-                        content: `
+                        $.confirm({
+                            title: 'Присваивание тега для гостей',
+                            type: 'blue',
+                            content: `
                                 <div>
                                     <p>
                                         <i class="fa fa-tag" style="color: #007bff;"></i>
@@ -1619,205 +1736,248 @@
                                     <input type="text" id="guest-tag" class="form-control" placeholder="Введите название тега">
                                 </div>
                             `,
-                        boxWidth: '400px',
-                        useBootstrap: false,
-                        buttons: {
-                            confirm: {
-                                text: 'ДОБАВИТЬ',
-                                btnClass: 'btn-green',
-                                action: function() {
-                                    const tag = this.$content.find('#guest-tag').val();
+                            boxWidth: '400px',
+                            useBootstrap: false,
+                            buttons: {
+                                confirm: {
+                                    text: 'ДОБАВИТЬ',
+                                    btnClass: 'btn-green',
+                                    action: function() {
+                                        const tag = this.$content.find('#guest-tag').val();
 
-                                    if (!tag) {
-                                        $.alert('Пожалуйста, введите тег!');
-                                        return false;
-                                    }
-
-                                    const guestIds = [];
-                                    for (let i = 0; i < selectedTagRows.length; i++) {
-                                        guestIds.push(selectedTagRows[i].id);
-                                    }
-
-                                    $.ajax({
-                                        url: '/listok/tag',
-                                        method: 'POST',
-                                        data: {
-                                            guest_ids: guestIds,
-                                            tag: tag,
-                                            _token: $('meta[name="csrf-token"]').attr('content')
-                                        },
-                                        success: function(response) {
-                                            if (response.success) {
-                                                Swal.fire({
-                                                    icon: 'success',
-                                                    title: 'Тег успешно добавлен!',
-                                                    showConfirmButton: false,
-                                                    timer: 1500
-                                                });
-                                                $('#listok-table').DataTable().ajax.reload(null,
-                                                    false);
-                                            } else {
-                                                $.alert(response.message ||
-                                                    'Ошибка добавления тега!');
-                                            }
-                                        },
-                                        error: function() {
-                                            $.alert('Ошибка сервера!');
+                                        if (!tag) {
+                                            $.alert('Пожалуйста, введите тег!');
+                                            return false;
                                         }
-                                    });
+
+                                        const guestIds = [];
+                                        for (let i = 0; i < selectedTagRows.length; i++) {
+                                            guestIds.push(selectedTagRows[i].id);
+                                        }
+
+                                        $.ajax({
+                                            url: '{{route('listok.deleteTag')}}',
+                                            method: 'POST',
+                                            data: {
+                                                guest_ids: guestIds,
+                                                tag: tag,
+                                                _token: $('meta[name="csrf-token"]').attr('content')
+                                            },
+                                            success: function(response) {
+                                                if (response.success) {
+                                                    Swal.fire({
+                                                        icon: 'success',
+                                                        title: 'Тег успешно добавлен!',
+                                                        showConfirmButton: false,
+                                                        timer: 1500
+                                                    });
+                                                    $('#listok-table').DataTable().ajax.reload(null,
+                                                        false);
+                                                } else {
+                                                    $.alert(response.message ||
+                                                        'Ошибка добавления тега!');
+                                                }
+                                            },
+                                            error: function() {
+                                                $.alert('Ошибка сервера!');
+                                            }
+                                        });
+                                    }
+                                },
+                                cancel: {
+                                    text: 'Отмена',
+                                    btnClass: 'btn-danger'
                                 }
-                            },
-                            cancel: {
-                                text: 'Отмена',
-                                btnClass: 'btn-danger'
                             }
+                        });
+                        break;
+
+                    case 'deleteTag':
+                        const selectedDeleteTagRows = $('#listok-table').DataTable().rows({
+                            selected: true
+                        }).data();
+
+                        if (selectedDeleteTagRows.length === 0) {
+                            $.alert('Пожалуйста, выберите хотя бы одного гостя.');
+                            return;
                         }
-                    });
-                    break;
 
-
-
-                case 'delete-tag':
-                    const selectedDeleteTagRows = $('#listok-table').DataTable().rows({
-                        selected: true
-                    }).data();
-
-                    if (selectedDeleteTagRows.length === 0) {
-                        $.alert('Пожалуйста, выберите хотя бы одного гостя.');
-                        return;
-                    }
-
-                    $.confirm({
-                        title: 'Удалить теги',
-                        type: 'blue',
-                        content: `
+                        $.confirm({
+                            title: 'Удалить теги',
+                            type: 'blue',
+                            content: `
                                 <div>
                                     <p><i class="fa fa-tag" style="color: #007bff;"></i> Выбрано <b>${selectedDeleteTagRows.length}</b> гостей.</p>
                                 </div>
                             `,
-                        boxWidth: '400px',
-                        useBootstrap: false,
-                        buttons: {
-                            confirm: {
-                                text: 'Очистить',
-                                btnClass: 'btn-danger',
-                                action: function() {
-                                    const guestIds = [];
-                                    selectedDeleteTagRows.each(function(rowData) {
-                                        guestIds.push(rowData.id);
-                                    });
+                            boxWidth: '400px',
+                            useBootstrap: false,
+                            buttons: {
+                                confirm: {
+                                    text: 'Очистить',
+                                    btnClass: 'btn-danger',
+                                    action: function() {
+                                        const guestIds = [];
+                                        selectedDeleteTagRows.each(function(rowData) {
+                                            guestIds.push(rowData.id);
+                                        });
 
-                                    $.ajax({
-                                        url: '/listok/delete-tag',
-                                        method: 'POST',
-                                        data: {
-                                            guest_ids: guestIds,
-                                            _token: $('meta[name="csrf-token"]').attr('content')
-                                        },
-                                        success: function(response) {
-                                            if (response.success) {
-                                                Swal.fire({
-                                                    icon: 'success',
-                                                    title: "Теги успешно удалены!",
-                                                    showConfirmButton: false,
-                                                    timer: 1500
-                                                });
-                                                $('#listok-table').DataTable().ajax.reload(null,
-                                                    false);
-                                            } else {
-                                                $.alert('Ошибка при удалении тегов!');
+                                        $.ajax({
+                                            url: '/listok/delete-tag',
+                                            method: 'POST',
+                                            data: {
+                                                guest_ids: guestIds,
+                                                _token: $('meta[name="csrf-token"]').attr('content')
+                                            },
+                                            success: function(response) {
+                                                if (response.success) {
+                                                    Swal.fire({
+                                                        icon: 'success',
+                                                        title: "Теги успешно удалены!",
+                                                        showConfirmButton: false,
+                                                        timer: 1500
+                                                    });
+                                                    $('#listok-table').DataTable().ajax.reload(null,
+                                                        false);
+                                                } else {
+                                                    $.alert('Ошибка при удалении тегов!');
+                                                }
+                                            },
+                                            error: function() {
+                                                $.alert('Ошибка сервера!');
                                             }
-                                        },
-                                        error: function() {
-                                            $.alert('Ошибка сервера!');
-                                        }
-                                    });
+                                        });
+                                    }
+                                },
+                                cancel: {
+                                    text: 'Отмена',
+                                    btnClass: 'btn-blue'
                                 }
-                            },
-                            cancel: {
-                                text: 'Отмена',
-                                btnClass: 'btn-blue'
                             }
-                        }
-                    });
-                    break;
+                        });
+                        break;
 
-                case 'extend-visa':
-                    $.confirm({
-                        title: 'Продление визы.',
-                        type: 'blue',
-                        content: `
+                    case 'extendVisa':
+                        $.confirm({
+                            title: 'Продление визы.',
+                            type: 'blue',
+                            content: `
                             <div>
-                                <p style="margin-left:20px;">${rowData.ctz} ${rowData.guest}</p>
+                                <p>${rowData.ctz} ${rowData.guest}</p>
                                 <form id="visa-form">
                                     <div style="margin-bottom: 10px;">
                                         <label for="dateVisaOn">Срок визы с:</label>
-                                        <input type="date" id="dateVisaOn" name="dateVisaOn" class="form-control">
+                                        <input placeholder='dd.mm.yyyy' id="dateVisaOn" class='form-control input-mask-date' data-inputmask=\"'alias': 'datetime'\" data-inputmask-inputformat='dd.mm.yyyy' inputmode='numeric' name='dateVisaOn' value=''>
                                     </div>
                                     <div>
                                         <label for="dateVisaOff">Срок визы до:</label>
-                                        <input type="date" id="dateVisaOff" name="dateVisaOff" class="form-control">
+                                        <input placeholder='dd.mm.yyyy' id="dateVisaOff" class='form-control input-mask-date' data-inputmask=\"'alias': 'datetime'\" data-inputmask-inputformat='dd.mm.yyyy' inputmode='numeric' name='dateVisaOff' value=''>
                                     </div>
                                 </form>
                             </div>
                                 `,
-                        boxWidth: '400px',
-                        useBootstrap: false,
-                        buttons: {
-                            confirm: {
-                                text: 'ИЗМЕНИТЬ',
-                                btnClass: 'btn-green',
-                                action: function() {
-                                    const selectedGuest = rowData.id;
+                            boxWidth: '400px',
+                            useBootstrap: false,
+                            buttons: {
+                                confirm: {
+                                    text: 'ИЗМЕНИТЬ',
+                                    btnClass: 'btn-green',
+                                    action: function() {
+                                        const selectedGuest = rowData.id;
 
-                                    const dateVisaOn = this.$content.find('#dateVisaOn').val();
-                                    const dateVisaOff = this.$content.find('#dateVisaOff').val();
+                                        const dateVisaOn = this.$content.find('#dateVisaOn').val();
+                                        const dateVisaOff = this.$content.find('#dateVisaOff').val();
 
-                                    if (!dateVisaOn || !dateVisaOff) {
-                                        $.alert('Заполните оба поля!');
-                                        return false;
-                                    }
-
-                                    $.ajax({
-                                        url: '/listok/extend-visa',
-                                        method: 'POST',
-                                        data: {
-                                            guest_id: selectedGuest,
-                                            dateVisaOn: dateVisaOn,
-                                            dateVisaOff: dateVisaOff,
-                                            _token: $('meta[name="csrf-token"]').attr('content')
-                                        },
-                                        success: function(response) {
-                                            if (response.success) {
-                                                Swal.fire({
-                                                    icon: 'success',
-                                                    title: "Виза успешно продлено!",
-                                                    showConfirmButton: false,
-                                                });
-                                                $('#listok-table').DataTable().ajax.reload(null,
-                                                    false);
-                                            } else {
-                                                $.alert('Ошибка при обновлении данных!');
-                                            }
-                                        },
-                                        error: function() {
-                                            $.alert('Ошибка сервера!');
+                                        if (!dateVisaOn || !dateVisaOff) {
+                                            $.alert('Заполните оба поля!');
+                                            return false;
                                         }
-                                    });
+
+                                        $.ajax({
+                                            url: '/listok/extend-visa',
+                                            method: 'POST',
+                                            data: {
+                                                guest_id: selectedGuest,
+                                                dateVisaOn: dateVisaOn,
+                                                dateVisaOff: dateVisaOff,
+                                                _token: $('meta[name="csrf-token"]').attr('content')
+                                            },
+                                            success: function(response) {
+                                                if (response.success) {
+                                                    Swal.fire({
+                                                        icon: 'success',
+                                                        title: "Виза успешно продлено!",
+                                                        showConfirmButton: false,
+                                                    });
+                                                    $('#listok-table').DataTable().ajax.reload(null,
+                                                        false);
+                                                } else {
+                                                    $.alert('Ошибка при обновлении данных!');
+                                                }
+                                            },
+                                            error: function() {
+                                                $.alert('Ошибка сервера!');
+                                            }
+                                        });
+                                    }
+                                },
+                                cancel: {
+                                    text: 'ОТМЕНА',
+                                    btnClass: 'btn-danger'
                                 }
                             },
-                            cancel: {
-                                text: 'ОТМЕНА',
-                                btnClass: 'btn-danger'
-                            }
-                        }
-                    });
-                    break;
+                            onContentReady: function() {
+                                $(":input").inputmask();
+                                const today = new Date();
+                                const threeMonthsAgo = new Date();
+                                threeMonthsAgo.setMonth(today.getMonth() - 3);
 
-                default:
-                    $.alert('Действие не реализовано.');
+                                const formatDate = (date) => {
+                                    const day = String(date.getDate()).padStart(2, '0');
+                                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                                    const year = date.getFullYear();
+                                    return `${day}.${month}.${year}`;
+                                };
+
+                                const arrivalFromInput = $('input[name="dateVisaOn"]');
+                                const arrivalToInput = $('input[name="dateVisaOff"]');
+
+                                arrivalFromInput.attr('min', formatDate(threeMonthsAgo));
+                                arrivalFromInput.attr('max', formatDate(today));
+
+                                arrivalFromInput.on('change', function() {
+                                    const selectedDate = new Date($(this).val().split('.').reverse().join('-'));
+                                    if (selectedDate < threeMonthsAgo || selectedDate > today) {
+                                        $.alert('Дата должна быть в диапазоне от ' + formatDate(threeMonthsAgo) + ' до ' + formatDate(today));
+                                        $(this).val('');
+                                    }
+                                });
+
+                                arrivalFromInput.add(arrivalToInput).on('change', function() {
+                                    const fromDate = new Date(arrivalFromInput.val().split('.').reverse().join('-'));
+                                    const toDate = new Date(arrivalToInput.val().split('.').reverse().join('-'));
+
+                                    if (arrivalFromInput.val() && arrivalToInput.val() && toDate <= fromDate) {
+                                        $.alert('Дата прибытия не должна быть больше, чем дата убытия');
+                                        arrivalToInput.val('');
+                                    }
+                                });
+
+                            }
+                        });
+                        break;
+
+                    default:
+                        $.alert('Действие не реализовано.');
+                }
             }
-        }
+
+            $(document).on('click', function(e) {
+                $.contextMenu('hide');
+            });
+        });
+
+
     </script>
 
     {{-- dbclick --}}
@@ -2100,7 +2260,6 @@
                     useBootstrap: false,
                     buttons: false,
                     onContentReady: function() {
-
                         $.ajax({
                             url: '{{ route("listok.getAuditLogs") }}',
                             method: 'GET',
@@ -2271,6 +2430,8 @@
                     boxWidth: '900px',
                     useBootstrap: false,
                     type: "blue",
+                    typeAnimated: true,
+                    closeIcon: true,
                     content: "<div class='global-search'>" +
                         "<form id='global-search-form'>" +
                         "<div class='row align-items-center mb-3'>" +
@@ -2314,8 +2475,8 @@
                         "<label class='col-md-3'>ПЕРИОД ПРИБЫТИЯ:</label>" +
                         "<div class='col-md-6 search-input'>" +
                         "<div class='d-flex'>" +
-                        "<input placeholder='dd.mm.yyyy' class='form-control input-mask-date me-2' data-inputmask=\"'alias': 'datetime'\" data-inputmask-inputformat='dd.mm.yyyy' inputmode='numeric' name='arrival_from' value='" + (filterValues.arrival_from || '') + "'>" +
-                        "<input placeholder='dd.mm.yyyy' class='form-control input-mask-date' data-inputmask=\"'alias': 'datetime'\" data-inputmask-inputformat='dd.mm.yyyy' inputmode='numeric' name='arrival_to' value='" + (filterValues.arrival_to || '') + "'>" +
+                        "<span style='margin-top: 6px; margin-bottom: 6px; margin-right: 12px; font-size: 10px; color: #333; background-color: #9af3ec ; padding: 8px 12px; border-radius: 5px; box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);'>С</span> " + "<input placeholder='dd.mm.yyyy' class='form-control input-mask-date me-2' data-inputmask=\"'alias': 'datetime'\" data-inputmask-inputformat='dd.mm.yyyy' inputmode='numeric' name='arrival_from' value='" + (filterValues.arrival_from || '') + "'>" +
+                        "<span style='margin-top: 6px; margin-bottom: 6px; margin-right: 12px; font-size: 10px; color: #333; background-color: #9af3ec ; padding: 8px 12px; border-radius: 5px; box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);'>ПО</span>" + "<input placeholder='dd.mm.yyyy' class='form-control input-mask-date' data-inputmask=\"'alias': 'datetime'\" data-inputmask-inputformat='dd.mm.yyyy' inputmode='numeric' name='arrival_to' value='" + (filterValues.arrival_to || '') + "'>" +
                         "</div>" +
                         "</div>" +
                         "</div>" +
@@ -2369,10 +2530,36 @@
                                 $('#listok-table').DataTable().ajax.reload(null, false);
                             },
                         },
-                        ОТМЕНА: {btnClass: 'btn-danger'},
+                        Очистить: {
+                            text: '<i class="fas fa-filter"></i> <i class="fas fa-times"></i>',
+                            btnClass: 'btn-danger me-3',
+                            action: function() {
+                                $('#regNum-filter').val('');
+                                $('#room-filter').val('');
+                                $('#tag-filter').val('');
+                                $('#global-search-form input').val('');
+                                $('#global-search-form select').val('').trigger('change');
+
+                                var table = $('#listok-table').DataTable();
+                                table.ajax.params = {};
+                                table.search('').columns().search('');
+                                table.ajax.reload();
+
+                                localStorage.removeItem('globalFilters');
+                            }
+                        },
+
                     },
                     onContentReady: function() {
+                        const savedFilters = JSON.parse(localStorage.getItem('globalFilters') || '{}');
+                        if (savedFilters) {
+                            Object.keys(savedFilters).forEach(key => {
+                                $(`[name="${key}"]`).val(savedFilters[key]);
+                            });
+                        }
+
                         $(":input").inputmask();
+
                         $('#citizenship, #region, #hotel').selectize({
                             create: true,
                             sortField: 'text',
@@ -2386,13 +2573,43 @@
                                 .toUpperCase()
                             );
                         });
+
                         $('#surname, #last_name, #first_name').on('input', function() {
                             var maxLength = 30;
                             $(this).val($(this).val().replace(/[^a-zA-Z\s]/g, '').substring(0, maxLength)
                                 .toUpperCase()
                             );
                         });
-                    },
+
+                        const today = new Date();
+                        const threeMonthsAgo = new Date();
+                        threeMonthsAgo.setMonth(today.getMonth() - 3);
+
+
+                        const arrivalFromInput = $('input[name="arrival_from"]');
+                        const arrivalToInput = $('input[name="arrival_to"]');
+
+                        const birthdateInput = $('#input-birthdate');
+                        birthdateInput.on('change', function() {
+                            const selectedDate = new Date($(this).val().split('.').reverse().join('-'));
+                            if (selectedDate > today) {
+                                $.alert('Дата рождения не может быть в будущем');
+                                $(this).val('');
+                            }
+                        });
+
+
+                        arrivalFromInput.add(arrivalToInput).on('change', function() {
+                            const fromDate = new Date(arrivalFromInput.val().split('.').reverse().join('-'));
+                            const toDate = new Date(arrivalToInput.val().split('.').reverse().join('-'));
+
+                            if (arrivalFromInput.val() && arrivalToInput.val() && toDate <= fromDate) {
+                                $.alert('Дата прибытия "По" должна быть больше, чем "С"');
+                                arrivalToInput.val('');
+                            }
+                        });
+
+                    }
                 });
             });
 
@@ -2479,7 +2696,6 @@
 
     </script>
 
-
 @endsection
 @section('header_title', 'Листок прибития')
 @section('content')
@@ -2511,8 +2727,8 @@
                                         <i class="fa fa-search-plus"></i>
                                     </button>
 
-                                    <button type="button" class="btn btn-outline-info rounded me-2" id="clear-filter-btn">
-                                        <i class="fa fa-undo"></i>
+                                    <button type="button" class="btn btn-outline-danger rounded me-2" id="clear-filter-btn">
+                                        <i class="fas fa-filter"></i> <i class="fas fa-times"></i>
                                     </button>
 
                                     <button id="excelButton" type="button" class="btn btn-outline-success rounded me-2">
@@ -2559,9 +2775,9 @@
                                         class="fas fa-print"></i>Печать листка прибытия</a></li>
                             <li><a href="#" class="menu-action" data-action="tag"><i id="icon-cont"
                                         class="fas fa-tag"></i>Присвоить тег</a></li>
-                            <li><a href="#" class="menu-action" data-action="delete-tag"><i id="icon-cont"
+                            <li><a href="#" class="menu-action" data-action="deleteTag"><i id="icon-cont"
                                         class="fas fa-times"></i>Удалить тег</a></li>
-                            <li><a href="#" class="menu-action" data-action="extend-visa"><i id="icon-cont"
+                            <li><a href="#" class="menu-action" data-action="extendVisa"><i id="icon-cont"
                                         class="fas fa-id-card"></i>Продлить визу</a></li>
                         </ul>
                     </div>

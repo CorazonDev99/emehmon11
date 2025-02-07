@@ -7,15 +7,48 @@
 
     <title>{{ config('app.name', 'Laravel') }}</title>
 
-    <!-- Fonts -->
-{{--    <link rel="stylesheet" href="https://fonts.bunny.net/css2?family=Nunito:wght@400;600;700&display=swap">--}}
 
-{{--    @vite(['resources/css/app.css', 'resources/js/app.js'])--}}
 
     <link href="/assets/css/bootstrap.min.css" id="bootstrap-style" rel="stylesheet" type="text/css" />
     <link href="/assets/css/icons.min.css" rel="stylesheet" type="text/css" />
     <link href="/assets/css/app.min.css" id="app-style" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <style>
+        .navbar-header {
+            max-width: 100% !important;
+        }
+        .container-fluid {
+            max-width: 100% !important;
+        }
+
+        .dropdown-submenu {
+            position: relative;
+        }
+
+        .dropdown-submenu .dropdown-menu {
+            top: 0;
+            left: 100%;
+            margin-top: -1px;
+            margin-left: 0.1rem;
+        }
+
+        .arrow-right {
+            display: inline-block;
+            margin-left: 8px;
+            font-size: 12px;
+            color: #000;
+        }
+        .arrow-right::after {
+            content: "\F285";
+            font-family: "bootstrap-icons";
+            font-size: 12px;
+            color: #393939;
+            margin-left: 8px;
+        }
+
+        .dropdown-submenu:hover .dropdown-menu {
+            display: block;
+        }
         .dropdown-menu i{
             width: 1.5rem;
             text-align: center;
@@ -34,6 +67,7 @@
 
 {{--<body class="font-sans antialiased">--}}
 <body data-layout="horizontal" data-topbar="colored">
+
 <div id="layout-wrapper">
 
 

@@ -226,7 +226,7 @@
                 <button type="button" class="btn header-item waves-effect" id="page-header-user-dropdown"
                         data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     <span
-                        class="d-none d-xl-inline-block ms-1 fw-medium font-size-15">{{ \Illuminate\Support\Facades\Auth::user()->name }}</span>
+                        class="d-none d-xl-inline-block ms-1 fw-medium font-size-15">{{ \Illuminate\Support\Facades\Auth::user()->first_name }} {{ \Illuminate\Support\Facades\Auth::user()->last_name }}</span>
                     <i class="uil-angle-down d-none d-xl-inline-block font-size-15"></i>
                 </button>
                 <div class="dropdown-menu dropdown-menu-end">

@@ -32,7 +32,7 @@ class ListokController extends Controller
         $grp_id = \Session::get('rid', \Auth::user()->roles->pluck('id')->first());
         $this->data['showHotel'] = $grp_id == 6 || $grp_id == 8;
 
-        $children = \DB::table('tb_children')
+        $childrens = \DB::table('tb_children')
             ->join('tb_listok', 'tb_listok.id', '=', 'tb_children.id_listok')
             ->select(
                 'tb_children.id_listok as id',
@@ -42,11 +42,8 @@ class ListokController extends Controller
             )
             ->get();
 
-        $this->data['children'] = $children;
-
-
         $rooms = \DB::table('tb_rooms')
-            ->join('tb_listok_rooms', 'tb_listok_rooms.id_room', '=', 'tb_rooms.id')
+            ->leftjoin('tb_listok_rooms', 'tb_listok_rooms.id_room', '=', 'tb_rooms.id')
             ->join('tb_room_types', 'tb_room_types.id', '=', 'tb_rooms.id_room_type')
             ->where('tb_rooms.active', "1")
             ->where('tb_rooms.id_hotel', session('hid', auth()->user()->id_hotel))
@@ -100,7 +97,7 @@ class ListokController extends Controller
             )->get();
 
 
-        return view('listok.index', $this->data, compact('rooms', 'hotels', 'regions', 'ctzns', 'feedbacks', 'room_history', 'bron_room'));
+        return view('listok.index', $this->data, compact('childrens','rooms', 'hotels', 'regions', 'ctzns', 'feedbacks', 'room_history', 'bron_room'));
     }
 
 
@@ -115,7 +112,7 @@ class ListokController extends Controller
     public function create()
     {
         $rooms = \DB::table('tb_rooms')
-            ->join('tb_listok_rooms', 'tb_listok_rooms.id_room', '=', 'tb_rooms.id')
+            ->leftjoin('tb_listok_rooms', 'tb_listok_rooms.id_room', '=', 'tb_rooms.id')
             ->join('tb_room_types', 'tb_room_types.id', '=', 'tb_rooms.id_room_type')
             ->where('tb_rooms.active', "1")
             ->where('tb_rooms.id_hotel', session('hid', auth()->user()->id_hotel))
@@ -130,7 +127,7 @@ class ListokController extends Controller
     {
         $book_id = $request->query('id');
         $rooms = \DB::table('tb_rooms')
-            ->join('tb_listok_rooms', 'tb_listok_rooms.id_room', '=', 'tb_rooms.id')
+            ->leftjoin('tb_listok_rooms', 'tb_listok_rooms.id_room', '=', 'tb_rooms.id')
             ->join('tb_room_types', 'tb_room_types.id', '=', 'tb_rooms.id_room_type')
             ->where('tb_rooms.active', "1")
             ->where('tb_rooms.id_hotel', session('hid', auth()->user()->id_hotel))
@@ -231,19 +228,24 @@ class ListokController extends Controller
             $d->where('tb_listok.lastname', 'like', '%' . $request->lastname . '%');
         }
         if ($request->filled('datebirth')) {
-            $d->whereDate('tb_listok.datebirth', '=', $request->datebirth);
+            $dateBirth = \Carbon\Carbon::createFromFormat('d.m.Y', $request->datebirth)->format('Y-m-d');
+
+            $d->whereDate('tb_listok.datebirth', '=', $dateBirth);
         }
         if ($request->filled('citizenship')) {
             $d->where('tb_listok.id_citizen', '=', $request->citizenship);
         }
         if ($request->filled('arrival_from') && $request->filled('arrival_to')) {
-            $d->whereBetween('tb_listok.dateVisitOn', [$request->arrival_from, $request->arrival_to])
-                  ->orWhereBetween('tb_listok.dateVisitOff', [$request->arrival_from, $request->arrival_to]);
+            $arrivalTo = \Carbon\Carbon::createFromFormat('d.m.Y', $request->arrival_to)->format('Y-m-d');
+            $arrivalFrom = \Carbon\Carbon::createFromFormat('d.m.Y', $request->arrival_from)->format('Y-m-d');
+            $d->whereBetween('tb_listok.dateVisitOn', [$arrivalFrom, $arrivalTo])
+                  ->orWhereBetween('tb_listok.dateVisitOff', [$arrivalFrom, $arrivalTo]);
         }
 
         elseif ($request->filled('arrival_from')) {
-            $d->where('tb_listok.dateVisitOn', '>=', $request->arrival_from)
-                  ->orWhere('tb_listok.dateVisitOff', '>=', $request->arrival_from);
+            $arrivalFrom = \Carbon\Carbon::createFromFormat('d.m.Y', $request->arrival_from)->format('Y-m-d');
+            $d->where('tb_listok.dateVisitOn', '>=', $arrivalFrom)
+                  ->orWhere('tb_listok.dateVisitOff', '>=', $arrivalFrom);
         }
         if ($request->filled('passport_number')) {
             $d->whereRaw("CONCAT(tb_listok.passportSerial, tb_listok.passportNumber) = ?", [$request->passport_number]);
@@ -917,11 +919,14 @@ class ListokController extends Controller
             ->first();
 
         try {
+            $dateVisaOn = \Carbon\Carbon::createFromFormat('d.m.Y', $request->dateVisaOn)->format('Y-m-d');
+            $dateVisaOff = \Carbon\Carbon::createFromFormat('d.m.Y', $request->dateVisaOff)->format('Y-m-d');
+
             \DB::table('tb_listok')
                 ->where('id', $guestId)
                 ->update([
-                    'dateVisaOn' => $request->dateVisaOn,
-                    'dateVisaOff' => $request->dateVisaOff,
+                    'dateVisaOn' => $dateVisaOn,
+                    'dateVisaOff' => $dateVisaOff,
                     'updated_at' => now(),
                 ]);
 
@@ -932,8 +937,8 @@ class ListokController extends Controller
                 [
                     'old_dateVisaOn' => $currentVisaDates->dateVisaOn ?? null,
                     'old_dateVisaOff' => $currentVisaDates->dateVisaOff ?? null,
-                    'new_dateVisaOn' => $request->dateVisaOn,
-                    'new_dateVisaOff' => $request->dateVisaOff,
+                    'new_dateVisaOn' => $dateVisaOn,
+                    'new_dateVisaOff' => $dateVisaOff,
                 ]
             );
 
@@ -945,6 +950,7 @@ class ListokController extends Controller
             ]);
         }
     }
+
 
 
     public function feedBack(Request $request)
@@ -1011,9 +1017,8 @@ class ListokController extends Controller
             ->first();
 
         if ($row) {
-            $data = $row;
             $datachildren = \DB::table("tb_children")->where('id_listok', $row->id)->get();
-            return view('listok.qrlistok', ['data' => $data, 'datachildren' => $datachildren]);
+            return view('listok.qrlistok', ['data' => $row, 'datachildren' => $datachildren]);
         }
 
         return abort(404, 'Data not found!');
@@ -1107,7 +1112,6 @@ class ListokController extends Controller
 
             return $message ?: 'Изменения не указаны';
         } catch (\Exception $e) {
-            \Log::error('Ошибка при форматировании изменений: ' . $e->getMessage());
             return 'Ошибка при обработке изменений';
         }
 

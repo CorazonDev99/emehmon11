@@ -1,10 +1,11 @@
 @extends('layouts.app')
+@section('header_title', 'Меню')
+
 @section('style')
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.4/jquery-confirm.min.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.12.6/css/selectize.default.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -26,10 +27,10 @@
         .menu-structure li {
             margin: 5px 0;
             padding: 10px;
-            background-color: #f8f9fa;
-            border-radius: 4px;
+            background-color: #ffffff;
+            border-radius: 5px;
             cursor: move;
-            border: 1px solid #ced4da;
+            border: 2px solid #ced4da;
         }
 
         .menu-structure li ul {
@@ -42,8 +43,8 @@
             margin-bottom: 5px;
             padding: 8px;
             background-color: #e9ecef;
-            border-radius: 4px;
-            border: 1px solid #ced4da;
+            border-radius: 5px;
+            border: 2px solid #ced4da;
         }
 
         .menu-structure li:hover {
@@ -51,38 +52,49 @@
         }
 
     </style>
-
-
     <style>
 
         .menu-level {
-            background-color: #39a4fd !important;
             padding: 10px;
             margin-bottom: 5px;
             border-radius: 5px;
         }
 
         .child-menu-level {
-            background-color: #50E3C2 !important; /* Мятный для подменю */
             padding: 10px;
-            margin-left: 20px; /* Смещение для визуального разделения */
+            margin-left: 20px;
             margin-bottom: 5px;
             border-radius: 5px;
         }
 
         .subchild-menu-level {
-            background-color: #F5A623 !important; /* Яркий оранжевый для под-подменю */
             padding: 10px;
-            margin-left: 40px; /* Ещё большее смещение */
+            margin-left: 40px;
             margin-bottom: 5px;
             border-radius: 5px;
         }
 
-        /* Общие стили для всех уровней */
         .menu-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            width: 100%;
+        }
+
+        .child-icon{
+            margin-top: 5px;
+            margin-right: 10px !important;
+
+
+        }
+
+        .menu-item i {
+            margin-right: 8px;
+        }
+
+        .menu-item span {
+            flex-grow: 1;
+        }
+
+        .menu-item button {
+            margin-left: auto;
         }
         .menu-col{
             padding-right: 50px !important;
@@ -91,6 +103,7 @@
         .menu-row{
             margin-top:15px !important;
         }
+
         .container{
             max-width: 95% !important;
         }
@@ -103,7 +116,141 @@
         }
 
     </style>
+    <style>
 
+        /* Ряд с меню */
+        .menu-row {
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        /* Колонки */
+        .menu-col {
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Заголовки */
+        h2 {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        /* Структура меню */
+        .menu-structure {
+            list-style: none;
+            padding: 0;
+        }
+
+        .menu-level, .child-menu-level, .subchild-menu-level {
+            padding: 10px;
+            background: #e9ecef;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        /* Иконки */
+        .child-icon {
+            color: #007bff;
+        }
+
+        /* Subchild Menu */
+        .subchild-menu-level {
+            background: #d6d8db;
+            padding-left: 20px;
+            border-left: 3px solid #007bff;
+        }
+
+        .subchild-menu-level .menu-item i {
+            color: #28a745; /* Зеленый цвет для иконки subchild */
+        }
+
+        /* Кнопки */
+        .btn-danger-dark {
+            background-color: #dc3545;
+            border: none;
+            color: white;
+        }
+
+        .btn-danger-dark:hover {
+            background-color: #c82333;
+        }
+
+        /* Форма создания меню */
+        #createMenuForm {
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .menu-row {
+                flex-direction: column;
+            }
+        }
+
+
+    </style>
+
+    <style>
+        /* Кастомные стили для радио-кнопок */
+        .custom-radio .form-check-input {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #6c757d; /* Цвет границы */
+            margin-right: 8px;
+            cursor: pointer;
+            position: relative;
+            appearance: none; /* Убираем стандартный стиль */
+            border-radius: 50%; /* Делаем круглыми */
+            transition: all 0.3s ease;
+        }
+
+        /* Стиль для активной радио-кнопки */
+        .custom-radio .form-check-input:checked {
+            border-color: #0d6efd; /* Цвет границы при выборе */
+            background-color: #0d6efd; /* Цвет фона при выборе */
+        }
+
+        /* Анимация для активной радио-кнопки */
+        .custom-radio .form-check-input:checked::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 10px;
+            height: 10px;
+            background-color: white; /* Цвет внутреннего круга */
+            border-radius: 50%;
+        }
+
+        /* Стиль для текста */
+        .custom-radio .form-check-label {
+            font-size: 16px;
+            color: #495057; /* Цвет текста */
+            cursor: pointer;
+        }
+
+        /* Эффект при наведении */
+        .custom-radio:hover .form-check-input {
+            border-color: #0d6efd; /* Цвет границы при наведении */
+        }
+    </style>
 
 @endsection
 @section('script')
@@ -116,33 +263,6 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.4/jquery-confirm.min.js"></script>
-
-    <script>
-        $(document).ready(function() {
-            $('#menu_icons').select2({
-                templateResult: formatIcon,
-                templateSelection: formatIcon
-            });
-
-            function formatIcon(icon) {
-                if (!icon.id) {
-                    return icon.text;
-                }
-                var $icon = $(
-                    '<span><i class="' + $(icon.element).data('icon') + '"></i> ' + icon.text + '</span>'
-                );
-                return $icon;
-            }
-        });
-    </script>
-
-    <script>
-        document.getElementById('topMenuTab').addEventListener('click', function (e) {
-            e.preventDefault();
-            document.getElementById('topMenuSection').style.display = 'block';
-            document.getElementById('topMenuTab').classList.add('active');
-        });
-    </script>
 
     <script>
         let isSaveClicked = false;
@@ -252,115 +372,148 @@
                 const menuId = $(this).data('id');
 
                 const menu = menus.find(menu => menu.menu_id === menuId);
-
                 if (menu) {
-                    const menuName = menu.menu_name;
+                    const menuLang = JSON.parse(menu.menu_lang) || '';
+                    const menuUZ = menuLang.uz || '';
+                    const menuRU = menuLang.ru || '';
+                    const menuEN = menuLang.en || '';
                     const menuType = menu.menu_type;
                     const menuUrl = menu.url;
                     const menuModule = menu.module;
                     const menuIcons = menu.menu_icons;
                     const isActive = menu.active;
                     const entryBy = menu.entry_by;
+
+                    // Генерация опций для модуля
                     const moduleOptions = modules.map(module => {
                         const moduleName = module.module_title;
+                        const moduleNameValue = module.module_name; // Значение module_name
                         const selected = moduleName === menuModule ? 'selected' : '';
-                        return `<option value="${moduleName}" ${selected}>${moduleName}</option>`;
+                        return `<option value="${moduleName}" data-module-name="/${moduleNameValue}" ${selected}>${moduleName}</option>`;
                     }).join('');
 
                     const activeStatusHtml = `
-                    <fieldset class="row mt-4">
-                        <div class="col-md-3"><label class="form-label">Cтатус</label></div>
-                        <div class="col-md-7">
-                        <div class="form-check form-check-inline">
+                <fieldset class="row mt-4">
+                    <div class="col-md-3"><label class="form-label">Cтатус</label></div>
+                    <div class="col-md-7">
+                        <div class="form-check form-check-inline custom-radio">
                             <input class="form-check-input" type="radio" name="active" id="active" value="1" ${isActive == '1' ? 'checked' : ''}>
                             <label class="form-check-label" for="active">Активный</label>
                         </div>
-                        <div class="form-check form-check-inline">
+                        <div class="form-check form-check-inline custom-radio">
                             <input class="form-check-input" type="radio" name="active" id="inactive" value="0" ${isActive == '0' ? 'checked' : ''}>
                             <label class="form-check-label" for="inactive">Неактивный</label>
                         </div>
-                        </div>
-                    </fieldset>
-                `;
+                    </div>
+                </fieldset>
+            `;
 
                     $.confirm({
                         title: 'Редактировать меню',
                         type: 'blue',
                         boxWidth: '800px',
-                        useBootstrap:false,
+                        useBootstrap: false,
                         content: `
-                            <form id="editMenuForm">
-                                <div class="form-group row">
-                                    <div class="col-md-3">
-                                        <label for="menuName">Название меню</label>
+                    <form id="editMenuForm">
+                        <div class="form-group row">
+                            <div class="col-md-3">
+                                <label>Название меню</label>
+                            </div>
+                            <div class="col-md-7">
+                                <ul class="nav nav-tabs" id="editMenuLangTabs">
+                                    <li class="nav-item">
+                                        <a class="nav-link active" id="edit-ru-tab" data-bs-toggle="tab" href="#edit-ru">РУ</a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link" id="edit-uz-tab" data-bs-toggle="tab" href="#edit-uz">UZ</a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link" id="edit-en-tab" data-bs-toggle="tab" href="#edit-en">ENG</a>
+                                    </li>
+                                </ul>
+                                <div class="tab-content mt-2">
+                                    <div class="tab-pane fade show active" id="edit-ru">
+                                        <input type="text" class="form-control" id="menuNameRU" name="menu_name_ru" value="${menuRU || ''}" required placeholder="Название на русском">
                                     </div>
-                                    <div class="col-md-7">
-                                        <input type="text" class="form-control" id="menuName" name="menu_name" value="${menuName || ''}" required>
+                                    <div class="tab-pane fade" id="edit-uz">
+                                        <input type="text" class="form-control" id="menuNameUZ" name="menu_name_uz" value="${menuUZ || ''}" required placeholder="Название на узбекском">
                                     </div>
-                                </div>
-
-                                <div class="form-group row mt-3">
-                                    <div class="col-md-3">
-                                        <label for="menuType">Тип меню</label>
-                                    </div>
-                                    <div class="col-md-7">
-                                        <select class="form-control" id="menuType" name="menu_type">
-                                            <option value="internal" ${menuType === 'internal' ? 'selected' : ''}>Внутренний</option>
-                                            <option value="external" ${menuType === 'external' ? 'selected' : ''}>Внешний</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div class="form-group row mt-3" id="module-container">
-                                    <div class="col-md-3">
-                                        <label for="menuRoleId">Модуль</label>
-                                    </div>
-                                    <div class="col-md-7">
-                                        <select class="form-control" id="module" name="module">
-                                            <option value="">-- НЕ ВЫБРАНО --</option>
-                                            ${moduleOptions}
-                                        </select>
+                                    <div class="tab-pane fade" id="edit-en">
+                                        <input type="text" class="form-control" id="menuNameEN" name="menu_name_en" value="${menuEN || ''}" required placeholder="Название на английском">
                                     </div>
                                 </div>
+                            </div>
+                        </div>
 
-                                <div class="form-group row mt-3">
-                                    <div class="col-md-3">
-                                        <label for="menuUrl">URL</label>
-                                    </div>
-                                    <div class="col-md-7">
-                                        <input type="text" class="form-control" id="menuUrl" name="url" value="${menuUrl || ''}">
-                                    </div>
+                        <div class="form-group row mt-3">
+                            <div class="col-md-3">
+                                <label for="menuType">Тип меню</label>
+                            </div>
+                            <div class="col-md-7">
+                                <select class="form-control" id="menuType" name="menu_type">
+                                    <option value="internal" ${menuType === 'internal' ? 'selected' : ''}>Внутренний</option>
+                                    <option value="external" ${menuType === 'external' ? 'selected' : ''}>Внешний</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group row mt-3" id="module-container">
+                            <div class="col-md-3">
+                                <label for="menuRoleId">Модуль</label>
+                            </div>
+                            <div class="col-md-7">
+                                <select class="form-control" id="module" name="module">
+                                    <option value="">-- НЕ ВЫБРАНО --</option>
+                                    ${moduleOptions}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group row mt-3" id="url-container" style="display: none;">
+                            <div class="col-md-3">
+                                <label for="menuUrl">URL</label>
+                            </div>
+                            <div class="col-md-7">
+                                <input type="text" class="form-control" id="menuUrl" name="url" value="${menuUrl || ''}" readonly>
+                            </div>
+                        </div>
+
+                        <div class="form-group row mt-3">
+                            <div class="col-md-3">
+                                <label for="icons">Иконка меню</label>
+                            </div>
+                            <div class="col-md-7">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="icons" name="icons" value="${menuIcons || ''}">
+                                    <span class="input-group-text">
+                                        <i id="icon-preview" class="${menuIcons || ''}"></i>
+                                    </span>
                                 </div>
-
-                                 <div class="form-group row mt-3">
-                                    <div class="col-md-3">
-                                        <label for="icons">Иконка меню</label>
-                                    </div>
-                                    <div class="col-md-7">
-                                        <select class="form-control" id="icons" name="icons">
-                                            <option value="" selected>-- НЕ ВЫБРАНО --</option>
-                                            ${icons.map(icon =>
-
-                                                `<option value="${icon.icon_name}" data-icon="${icon.icon_name}" ${`${icon.icon_name}` === menuIcons ? 'selected' : ''}>
-                                                    ${menuIcons}
-                                                </option>
-                                            `).join('')}
-                                        </select>
-                                    </div>
+                                <div class="mt-2">
+                                    <p>Пример:
+                                        <span class="badge bg-info">icon-windows8</span>,
+                                        <span class="badge bg-info">fa fa-cloud-upload</span>
+                                    </p>
+                                    <p>Применение:
+                                        <a href="{{route('menu.getIcons')}}" target="_blank" class="text-decoration-none">Font Awesome</a>
+                                        class name
+                                    </p>
                                 </div>
+                            </div>
+                        </div>
 
-                                ${activeStatusHtml}
-                            </form>
-                        `,
-
+                        ${activeStatusHtml}
+                    </form>
+                `,
 
                         buttons: {
-
                             save: {
                                 text: 'Сохранить',
                                 btnClass: 'btn-success',
                                 action: function () {
-                                    const menuName = this.$content.find('#menuName').val();
+                                    const menuNameRU = this.$content.find('#menuNameRU').val();
+                                    const menuNameUZ = this.$content.find('#menuNameUZ').val();
+                                    const menuNameEN = this.$content.find('#menuNameEN').val();
                                     const menuType = this.$content.find('#menuType').val();
                                     const menuUrl = this.$content.find('#menuUrl').val();
                                     const menuModule = this.$content.find('#module').val();
@@ -376,12 +529,14 @@
                                         data: {
                                             menu_id: menu.menu_id,
                                             entry_by: entryBy,
-                                            menu_name: menuName,
+                                            menu_name_ru: menuNameRU,
+                                            menu_name_uz: menuNameUZ,
+                                            menu_name_en: menuNameEN,
                                             menu_type: menuType,
                                             url: menuUrl,
                                             module: menuModule,
                                             menu_icons: menuIcons,
-                                            active: active
+                                            active: active,
                                         },
                                         success: function (response) {
                                             Swal.fire({
@@ -404,7 +559,6 @@
                                             });
                                         }
                                     });
-
                                 }
                             },
                             cancel: {
@@ -415,53 +569,62 @@
                         },
 
                         onContentReady: function () {
-                            $('#icons').selectize({
-                                render: {
-                                    option: function (item) {
-                                        return `
-                                            <div>
-                                                <i class="${item.dataIcon}"></i>
-                                                <span>${item.text}</span>
-                                            </div>
-                                            `;
-                                                                        },
-                                                                        item: function (item) {
-                                                                            return `
-                                            <div>
-                                                <i class="${item.dataIcon}"></i>
-                                                <span>${item.text}</span>
-                                            </div>
-                                            `;
-                                    }
-                                },
-                                searchField: 'text',
-                                labelField: 'text',
-                                valueField: 'value',
-                                options: icons.map(icon => ({
-                                    value: `${icon.icon_name}`,
-                                    text: icon.icon_name,
-                                    dataIcon: `${icon.icon_name}`
-                                }))
+                            document.getElementById('icons').addEventListener('input', function() {
+                                var iconPreview = document.getElementById('icon-preview');
+                                iconPreview.className = this.value;
                             });
 
-
-
                             const moduleContainer = this.$content.find('#module-container');
+                            const urlContainer = this.$content.find('#url-container');
                             const menuTypeSelect = this.$content.find('#menuType');
+                            const moduleSelect = this.$content.find('#module');
+                            const urlInput = this.$content.find('#menuUrl');
 
-                            function toggleModuleField() {
+                            function toggleFields() {
                                 const selectedType = menuTypeSelect.val();
                                 if (selectedType === 'internal') {
                                     moduleContainer.show();
-                                    moduleContainer.find('#module').prop('required', true);
+                                    moduleSelect.prop('required', true);
+
+                                    if (moduleSelect.val() !== "") {
+                                        urlContainer.show();
+                                        urlInput.prop('required', true);
+                                    } else {
+                                        urlContainer.hide();
+                                        urlInput.prop('required', false);
+                                    }
                                 } else {
                                     moduleContainer.hide();
-                                    moduleContainer.find('#module').prop('required', false);
+                                    moduleSelect.prop('required', false);
+                                    urlContainer.hide();
+                                    urlInput.prop('required', false);
                                 }
                             }
 
-                            toggleModuleField();
-                            menuTypeSelect.on('change', toggleModuleField);
+                            moduleSelect.on('change', function () {
+                                const selectedOption = moduleSelect.find('option:selected');
+                                const moduleName = selectedOption.data('module-name');
+
+                                if (moduleName) {
+                                    urlInput.val(moduleName);
+                                    urlContainer.show();
+                                    urlInput.prop('required', true);
+                                } else {
+                                    urlInput.val('');
+                                    urlContainer.hide();
+                                    urlInput.prop('required', false);
+                                }
+                            });
+
+                            toggleFields();
+                            menuTypeSelect.on('change', toggleFields);
+
+                            if (moduleSelect.val() !== "") {
+                                const selectedOption = moduleSelect.find('option:selected');
+                                const moduleName = selectedOption.data('module-name');
+                                urlInput.val(moduleName);
+                                urlContainer.show();
+                            }
                         }
                     });
                 }
@@ -471,26 +634,60 @@
 
 
     <script>
+        document.getElementById('menu_icons').addEventListener('input', function() {
+            var iconPreview = document.getElementById('menu-icon-preview');
+            iconPreview.className = this.value;
+        });
+
         document.addEventListener('DOMContentLoaded', function () {
             const moduleContainer = document.getElementById('module-container');
+            const urlContainer = document.getElementById('url-container');
+            const moduleSelect = document.getElementById('module');
+            const urlInput = document.getElementById('url');
             const menuTypeRadios = document.querySelectorAll('.menu-type');
 
-            function updateModuleField() {
+            function updateFields() {
                 const selectedType = document.querySelector('.menu-type:checked').value;
                 if (selectedType === 'internal') {
                     moduleContainer.style.display = 'block';
-                    document.getElementById('module').setAttribute('required', 'required');
+                    moduleSelect.setAttribute('required', 'required');
+
+                    if (moduleSelect.value !== "") {
+                        urlContainer.style.display = 'block';
+                        urlInput.setAttribute('required', 'required');
+                    } else {
+                        urlContainer.style.display = 'none';
+                        urlInput.removeAttribute('required');
+                    }
                 } else {
                     moduleContainer.style.display = 'none';
-                    document.getElementById('module').removeAttribute('required');
+                    moduleSelect.removeAttribute('required');
+                    urlContainer.style.display = 'none';
+                    urlInput.removeAttribute('required');
                 }
             }
 
-            menuTypeRadios.forEach(radio => {
-                radio.addEventListener('change', updateModuleField);
+            moduleSelect.addEventListener('change', function () {
+                const selectedOption = moduleSelect.options[moduleSelect.selectedIndex];
+
+                if (selectedOption.value !== "") {
+                    const moduleName = selectedOption.getAttribute('data-module-name');
+                    urlInput.value = moduleName;
+
+                    urlContainer.style.display = 'block';
+                    urlInput.setAttribute('required', 'required');
+                } else {
+                    urlContainer.style.display = 'none';
+                    urlInput.removeAttribute('required');
+                    urlInput.value = "";
+                }
             });
 
-            updateModuleField();
+            menuTypeRadios.forEach(radio => {
+                radio.addEventListener('change', updateFields);
+            });
+
+            updateFields();
         });
 
     </script>
@@ -539,33 +736,45 @@
                 <div id="topMenuSection" class="col-md-12">
                     <ul id="topMenuStructure" class="menu-structure">
                         @foreach ($topMenus as $menu)
+                            @php
+                                $menuLang = is_string($menu->menu_lang) ? json_decode($menu->menu_lang, true) : $menu->menu_lang;
+                                $menuNameRu = $menuLang['ru'] ?? '';
+                            @endphp
                             <li data-id="{{ $menu->menu_id }}" data-type="{{ $menu->menu_type }}" class="menu-level">
-                                <div class="menu-item d-flex justify-content-between align-items-center">
+                                <div class="menu-item d-flex align-items-center justify-content-start">
                                     <i class="{{ $menu->menu_icons }}"></i>
-                                    <span>{{ $menu->menu_name }}</span>
-                                    <button class="btn btn-sm btn-danger-dark edit-menu" data-id="{{ $menu->menu_id }}" data-name="{{ $menu->menu_name }}">
+                                    <span>{{ $menuNameRu }}</span>
+                                    <button class="btn btn-sm btn-danger-dark edit-menu" data-id="{{ $menu->menu_id }}" data-name="{{ $menuNameRu }}">
                                         <i class="fa fa-edit"></i>
                                     </button>
                                 </div>
                                 @if (count($menu->children))
                                     <ul>
                                         @foreach ($menu->children as $child)
+                                            @php
+                                                $childLang = is_string($child->menu_lang) ? json_decode($child->menu_lang, true) : $child->menu_lang;
+                                                $childNameRu = $childLang['ru'] ?? '';
+                                            @endphp
                                             <li data-id="{{ $child->menu_id }}" data-type="{{ $child->menu_type }}" class="child-menu-level">
-                                                <div class="menu-item d-flex justify-content-between align-items-center">
-                                                    <i class="{{ $child->menu_icons }}"></i>
-                                                    <span>{{ $child->menu_name }}</span>
-                                                    <button class="btn btn-sm btn-danger-dark edit-menu" data-id="{{ $child->menu_id }}" data-name="{{ $child->menu_name }}">
+                                                <div class="menu-item d-flex justify-content-between align-items-start">
+                                                    <i class="{{ $child->menu_icons }} child-icon"></i>
+                                                    <span>{{ $childNameRu }}</span>
+                                                    <button class="btn btn-sm btn-danger-dark edit-menu" data-id="{{ $child->menu_id }}" data-name="{{ $childNameRu }}">
                                                         <i class="fa fa-edit"></i>
                                                     </button>
                                                 </div>
                                                 @if (count($child->children))
                                                     <ul>
                                                         @foreach ($child->children as $subChild)
+                                                            @php
+                                                                $subChildLang = is_string($subChild->menu_lang) ? json_decode($subChild->menu_lang, true) : $subChild->menu_lang;
+                                                                $subChildNameRu = $subChildLang['ru'] ?? '';
+                                                            @endphp
                                                             <li data-id="{{ $subChild->menu_id }}" data-type="{{ $subChild->menu_type }}" class="subchild-menu-level">
-                                                                <div class="menu-item d-flex justify-content-between align-items-center">
+                                                                <div class="menu-item d-flex justify-content-between align-items-start">
                                                                     <i class="{{ $subChild->menu_icons }}"></i>
-                                                                    <span>{{ $subChild->menu_name }}</span>
-                                                                    <button class="btn btn-sm btn-danger-dark edit-menu" data-id="{{ $subChild->menu_id }}" data-name="{{ $subChild->menu_name }}">
+                                                                    <span>{{ $subChildNameRu }}</span>
+                                                                    <button class="btn btn-sm btn-danger-dark edit-menu" data-id="{{ $subChild->menu_id }}" data-name="{{ $subChildNameRu }}">
                                                                         <i class="fa fa-edit"></i>
                                                                     </button>
                                                                 </div>
@@ -578,28 +787,48 @@
                                     </ul>
                                 @endif
                             </li>
-
                         @endforeach
                     </ul>
                 </div>
                 <button id="saveMenuOrder" class="btn btn-success mt-3">Сохранить порядок</button>
             </div>
-
             <div class="col-md-6">
-                <h2>Создать меню</h2>
                 <form id="createMenuForm">
+                    <h2>Создать меню</h2>
+
                     @csrf
                     <div class="mb-3">
-                        <label for="menu_name" class="form-label">Название/Заголовок</label>
-                        <input type="text" class="form-control" id="menu_name" name="menu_name" required>
+                        <label class="form-label">Название/Заголовок</label>
+                        <ul class="nav nav-tabs" id="menuLangTabs">
+                            <li class="nav-item">
+                                <a class="nav-link active" id="ru-tab" data-bs-toggle="tab" href="#ru">РУ</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" id="uz-tab" data-bs-toggle="tab" href="#uz">UZ</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" id="en-tab" data-bs-toggle="tab" href="#en">ENG</a>
+                            </li>
+                        </ul>
+                        <div class="tab-content mt-2">
+                            <div class="tab-pane fade show active" id="ru">
+                                <input type="text" class="form-control" name="menu_name_ru" required placeholder="Название на русском">
+                            </div>
+                            <div class="tab-pane fade" id="uz">
+                                <input type="text" class="form-control" name="menu_name_uz" required placeholder="Название на узбекском">
+                            </div>
+                            <div class="tab-pane fade" id="en">
+                                <input type="text" class="form-control" name="menu_name_en" required placeholder="Название на английском">
+                            </div>
+                        </div>
                     </div>
                     <fieldset class="mb-3">
                         <label class="form-label">Тип меню</label><br>
-                        <div class="form-check form-check-inline">
+                        <div class="form-check form-check-inline custom-radio">
                             <input class="form-check-input menu-type" type="radio" name="menu_type" id="internal" value="internal" checked>
                             <label class="form-check-label" for="internal">Внутренний</label>
                         </div>
-                        <div class="form-check form-check-inline">
+                        <div class="form-check form-check-inline custom-radio">
                             <input class="form-check-input menu-type" type="radio" name="menu_type" id="external" value="external">
                             <label class="form-check-label" for="external">Внешний</label>
                         </div>
@@ -609,31 +838,43 @@
                         <select class="form-control" id="module" name="module" required>
                             <option value="" selected>-- НЕ ВЫБРАНО --</option>
                             @foreach($modules as $module)
-                                <option value="{{ $module->module_title }}">{{ $module->module_title }}</option>
+                                <option value="{{ $module->module_title }}" data-module-name="/{{ $module->module_name }}">
+                                    {{ $module->module_title }}
+                                </option>
                             @endforeach
                         </select>
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-3" id="url-container">
                         <label for="url" class="form-label">Link</label>
-                        <input type="text" class="form-control" id="url" name="url">
+                        <input type="text" class="form-control" id="url" name="url" readonly>
                     </div>
                     <div class="mb-3">
-                        <label for="menu_icons" class="form-label mb-1">Иконка</label>
-                        <select class="form-control" id="menu_icons" name="menu_icons">
-                            <option value="" selected>-- НЕ ВЫБРАНО --</option>
-                            @foreach($icons as $icon)
-                                <option value="fa  {{ $icon->icon_name }}" data-icon="fa {{ $icon->icon_name }}">{{ $icon->icon_name }}</option>
-                            @endforeach
-                        </select>
+                        <label for="menu_icons" class="form-label">Иконка меню</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="menu_icons" name="menu_icons">
+                            <span class="input-group-text">
+                                <i id="menu-icon-preview"></i>
+                            </span>
+                        </div>
+                        <div class="mt-2">
+                            <p>Пример:
+                                <span class="badge bg-info">icon-windows8</span>,
+                                <span class="badge bg-info">fa fa-cloud-upload</span>
+                            </p>
+                            <p>Применение:
+                                <a href="{{route('menu.getIcons')}}" target="_blank" class="text-decoration-none">Font Awesome</a>
+                                class name
+                            </p>
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Статус</label>
                         <div class="col-md-7">
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="radio" name="active" id="active" value="1">
+                            <div class="form-check form-check-inline custom-radio">
+                                <input class="form-check-input" type="radio" name="active" id="active" value="1" checked>
                                 <label class="form-check-label" for="active">Активный</label>
                             </div>
-                            <div class="form-check form-check-inline">
+                            <div class="form-check form-check-inline custom-radio">
                                 <input class="form-check-input" type="radio" name="active" id="inactive" value="0">
                                 <label class="form-check-label" for="inactive">Неактивный</label>
                             </div>

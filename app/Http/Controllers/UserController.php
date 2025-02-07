@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Yajra\DataTables\DataTables;
+use Carbon\Carbon;
 
 
 class UserController extends Controller
@@ -13,13 +14,33 @@ class UserController extends Controller
 
     public function index(Request $request)
     {
-        $roles = DB::table('roles')->get();
-        $permissions = DB::table('permissions')->get();
+        $user = auth()->user();
+        $userRole = $user->roles->first();
+        $roles = DB::table('roles')
+            ->where('level', '>', $userRole->level)
+            ->orderBy('id')
+            ->get();
+
+        $rolesEdit = DB::table('roles')
+            ->where('level', '>=', $userRole->level)
+            ->orderBy('id')
+            ->get();
+
+        if ($user->roles->first()->is_admin == 1) {
+            $permissions = DB::table('permissions')->get();
+        } else {
+            $permissions = [];
+        }
+
         $userPermissions = DB::table('permissions')
             ->join('model_has_permissions', 'permissions.id', '=', 'model_has_permissions.permission_id')
             ->select('permissions.*', 'model_has_permissions.model_id')
             ->get();
-        return view('core.users.index', compact('roles', 'permissions', 'userPermissions'));
+
+        $hotels = DB::table('tb_hotels')->select(['id', 'name', 'id_region'])->get();
+        $regions = DB::table('tb_region')->select(['id', 'name'])->get();
+
+        return view('core.users.index', compact('roles', 'permissions', 'hotels', 'regions', 'userPermissions', 'rolesEdit'));
     }
 
 
@@ -28,31 +49,40 @@ class UserController extends Controller
         $query = DB::table('tb_users')
             ->leftJoin('model_has_roles', 'model_has_roles.model_id', '=', 'tb_users.id')
             ->leftJoin('roles', 'model_has_roles.role_id', '=', 'roles.id')
+            ->leftJoin('tb_hotels', 'tb_hotels.id', '=', 'tb_users.id_hotel')
+            ->leftJoin('tb_region', 'tb_hotels.id_region', '=', 'tb_region.id')
             ->select([
-            'tb_users.id as user_id',
-            'roles.id AS role_id',
-            'roles.name AS role_name',
-            'group_id',
-            'id_hotel',
-            'username',
-            'email',
-            'first_name',
-            'last_name',
-            'avatar',
+                'tb_users.id as user_id',
+                'roles.id AS role_id',
+                'roles.name AS role_name',
+                'group_id',
+                'id_hotel',
+                'username',
+                'email',
+                'first_name as name',
+                'last_name as last_name',
+                'avatar',
+                'tb_hotels.name as hotel_name',
+                'tb_region.name as region_name',
+            ])
+            ->whereNull('deleted_at');
 
-        ]);
-        if ($request->has('username') && !empty($request->input('username'))) {
-            $query->where('username', 'like', '%' . $request->input('username') . '%');
+        if ($request->filled('name')) {
+            $query->where('first_name', 'like', $request->input('name') . '%');
         }
-        if ($request->has('email') && !empty($request->input('email'))) {
-            $query->where('email', 'like', '%' . $request->input('email') . '%');
+        if ($request->filled('username')) {
+            $query->where('username', 'like', $request->input('username') . '%');
         }
-        if ($request->has('first_name') && !empty($request->input('first_name'))) {
-            $query->where('first_name', 'like', '%' . $request->input('first_name') . '%');
+        if ($request->filled('email')) {
+            $query->where('email', 'like', $request->input('email') . '%');
         }
-        if ($request->has('last_name') && !empty($request->input('last_name'))) {
-            $query->where('last_name', 'like', '%' . $request->input('last_name') . '%');
+        if ($request->filled('hotel_name')) {
+            $query->where('tb_hotels.id', '=', $request->input('hotel_name'));
         }
+        if ($request->filled('region_name')) {
+            $query->where('tb_region.id', '=', $request->input('region_name'));
+        }
+
 
         return DataTables::of($query)
             ->editColumn('avatar', function ($row) {
@@ -77,21 +107,22 @@ class UserController extends Controller
 
 
 
+
     public function createUser(Request $request)
     {
-        if (strlen($request->password) < 8) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Пароль должен содержать минимум 8 символов',
-            ], 422);
-        }
-
-        if ($request->password !== $request->password_confirmation) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Пароли не совпадают',
-            ], 422);
-        }
+        $request->validate([
+            'username' => 'required|string|max:255|unique:tb_users,username',
+            'email' => 'required|email|max:255|unique:tb_users,email',
+            'password' => 'required|string|min:8|confirmed',
+            'role_id' => 'required|integer|exists:roles,id',
+        ], [
+            'username.unique' => 'Пользователь с таким username уже существует.',
+            'email.unique' => 'Пользователь с таким email уже зарегистрирован.',
+            'password.min' => 'Пароль должен содержать минимум 8 символов.',
+            'password.confirmed' => 'Пароли не совпадают.',
+            'role_id.required' => 'Необходимо выбрать роль.',
+            'role_id.exists' => 'Выбранная роль не существует.',
+        ]);
 
         $authUser = Auth::user();
         $groupId = $authUser->group_id;
@@ -122,7 +153,7 @@ class UserController extends Controller
             'updated_at' => now(),
         ]);
 
-        $inserted = DB::table('model_has_roles')->insert([
+        DB::table('model_has_roles')->insert([
             'role_id' => $roleId,
             'model_type' => 'App\Models\User',
             'model_id' => $userId,
@@ -130,7 +161,6 @@ class UserController extends Controller
 
         if ($request->has('permissions')) {
             $permissions = json_decode($request->permissions, true);
-
             if (is_array($permissions)) {
                 foreach ($permissions as $permissionId) {
                     DB::table('model_has_permissions')->insert([
@@ -142,30 +172,28 @@ class UserController extends Controller
             }
         }
 
-        if ($inserted) {
-            return response()->json([
-                'success' => true,
-                'message' => 'User created successfully',
-            ]);
-        }
-
         return response()->json([
-            'success' => false,
-            'message' => 'Failed to create user',
+            'success' => true,
+            'message' => 'Пользователь успешно создан',
         ]);
     }
 
 
 
-    public function deleteUser(Request $request){
-        $id = $request->get("id");
-        try {
-            $deleted = DB::table('tb_users')->where('id', $id)->delete();
-            DB::table('model_has_roles')->where('model_id', $id)->delete();
-            DB::table('model_has_permissions')->where('model_id', $id)->delete();
 
+    public function deleteUser(Request $request)
+    {
+        $id = $request->get("id");
+
+        try {
+            $deleted = DB::table('tb_users')
+                ->where('id', $id)
+                ->update(['deleted_at' => Carbon::now()]);
 
             if ($deleted) {
+                DB::table('model_has_roles')->where('model_id', $id)->delete();
+                DB::table('model_has_permissions')->where('model_id', $id)->delete();
+
                 return response()->json([
                     'success' => true,
                     'message' => __('User deleted successfully.')
@@ -184,6 +212,7 @@ class UserController extends Controller
             ], 500);
         }
     }
+
 
     public function editUser(Request $request)
     {
@@ -275,10 +304,6 @@ class UserController extends Controller
                 }
             }
 
-
-
-
-
             return response()->json([
                 'success' => true,
                 'message' => 'Данные пользователя успешно обновлены!'
@@ -290,6 +315,7 @@ class UserController extends Controller
             ]);
         }
     }
+
 
 
 }

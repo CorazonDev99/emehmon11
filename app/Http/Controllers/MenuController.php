@@ -38,6 +38,13 @@ class MenuController extends Controller
 
         return view('core.menu.index', compact('topMenus', 'menus', 'modules', 'icons'));
     }
+
+
+    public function getIcons() {
+        return view('core.menu.icons');
+
+    }
+
     private function getMenuHierarchy($position)
     {
         $menus = DB::table('tb_menu')
@@ -68,33 +75,29 @@ class MenuController extends Controller
 
     public function store(Request $request)
     {
-        $menuName = $request->input('menu_name');
-        $menuType = $request->input('menu_type');
-        $url = $request->input('url');
-        $menuIcons = $request->input('menu_icons');
-        $active = $request->input('active');
-        $module = $request->input('module');
-
-
-        $newOrder = DB::table('tb_menu')
-                ->where('position', 'top')
-                ->max('ordering') + 1;
+        $menuNames = json_encode([
+            'ru' => $request->input('menu_name_ru'),
+            'uz' => $request->input('menu_name_uz'),
+            'en' => $request->input('menu_name_en')
+        ], JSON_UNESCAPED_UNICODE);
 
         DB::table('tb_menu')->insert([
             'entry_by' => auth()->user()->id,
-            'menu_name' => $menuName,
-            'menu_type' => $menuType,
-            'module' => $module,
-            'url' => $url,
+            'menu_name' => $request->input('menu_name_ru'),
+            'menu_type' => $request->input('menu_type'),
+            'module' => $request->input('module'),
+            'url' => $request->input('url'),
             'position' => 'top',
-            'menu_icons' => $menuIcons,
-            'active' => $active,
-            'ordering' => $newOrder,
+            'menu_icons' => 'fa ' . $request->input('menu_icons'),
+            'active' => $request->input('active'),
+            'ordering' => DB::table('tb_menu')->where('position', 'top')->max('ordering') + 1,
             'parent_id' => 0,
+            'menu_lang' => $menuNames
         ]);
 
-        return redirect()->route('menu.index')->with('success', 'Menu item created successfully.');
+        return redirect()->route('menu.index')->with('success', 'Меню успешно создано.');
     }
+
 
 
     public function updateOrder(Request $request)
@@ -135,7 +138,12 @@ class MenuController extends Controller
     public function updateMenu(Request $request)
     {
         $menuId = $request->input('menu_id');
-        $menuName = $request->input('menu_name');
+        $menuLang = [
+            'ru' => $request->input('menu_name_ru'),
+            'uz' => $request->input('menu_name_uz'),
+            'en' => $request->input('menu_name_en'),
+        ];
+
         $menuType = $request->input('menu_type');
         $url = $request->input('url');
         $icon = $request->input('menu_icons');
@@ -143,12 +151,11 @@ class MenuController extends Controller
         $isActive = $request->input('active');
         $entryBy = $request->input('entry_by');
 
-
         DB::table('tb_menu')
             ->where('menu_id', $menuId)
             ->update([
                 'entry_by' => $entryBy,
-                'menu_name' => $menuName,
+                'menu_lang' => json_encode($menuLang, JSON_UNESCAPED_UNICODE),
                 'menu_type' => $menuType,
                 'menu_icons' => $icon,
                 'active' => $isActive,
@@ -158,6 +165,6 @@ class MenuController extends Controller
             ]);
 
         return response()->json(['success' => true, 'message' => 'Меню обновлено успешно.']);
-
     }
+
 }

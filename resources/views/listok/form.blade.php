@@ -48,14 +48,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.2/jquery-confirm.min.js"></script>
 
 
-    <script>
-        $('#child_name').on('input', function() {
-            var maxLength = 30;
-            $(this).val($(this).val().replace(/[^a-zA-Z\s]/g, '').substring(0, maxLength)
-                .toUpperCase()
-            );
-        });
-    </script>
+
     <script>
         function updateFlagImage(selectedValue, flagImgId) {
             const flagImg = $(flagImgId);
@@ -425,68 +418,98 @@
         // Validate Date
         document.addEventListener('DOMContentLoaded', function () {
             class DateValidator {
-                constructor(inputElement, errorMessageElement, minYearSpanElement) {
+                constructor(inputElement, errorMessageElement, minYearSpanElement, maxYearSpanElement, minAge, maxAge) {
                     this.inputElement = inputElement;
                     this.errorMessageElement = errorMessageElement;
                     this.minYearSpanElement = minYearSpanElement;
+                    this.maxYearSpanElement = maxYearSpanElement;
                     this.today = new Date();
-                    this.minYear = this.today.getFullYear() - 150;
+                    this.minYear = this.today.getFullYear() - maxAge; // Минимально допустимый год рождения
+                    this.maxYear = this.today.getFullYear() - minAge; // Максимально допустимый год рождения
 
                     this.applyMask();
                     this.addEventListeners();
-
-                    if (this.minYearSpanElement) {
-                        this.minYearSpanElement.textContent = this.minYear;
-                    }
+                    this.updateYearSpans();
                 }
 
                 applyMask() {
-                    const im1 = new Inputmask("dd/mm/yyyy");
-                    im1.mask(this.inputElement);
+                    const im = new Inputmask("dd/mm/yyyy");
+                    im.mask(this.inputElement);
                 }
 
                 addEventListeners() {
-                    this.inputElement.addEventListener('input', this.handleInput.bind(this));
                     this.inputElement.addEventListener('blur', this.handleBlur.bind(this));
                 }
 
-                handleInput() {}
-
                 handleBlur() {
-                    const dateValue = this.inputElement.value;
+                    const dateValue = this.inputElement.value.trim();
                     const dateParts = dateValue.split('/');
 
                     if (dateParts.length === 3) {
+                        const day = parseInt(dateParts[0], 10);
+                        const month = parseInt(dateParts[1], 10);
                         const year = parseInt(dateParts[2], 10);
 
-                        if (year < this.minYear) {
-                            this.inputElement.value = '';
-                            if (this.errorMessageElement) {
-                                this.errorMessageElement.style.display = 'block';
-                            }
-                        } else {
-                            if (this.errorMessageElement) {
-                                this.errorMessageElement.style.display = 'none';
-                            }
+                        if (!this.isValidDate(day, month, year)) {
+                            this.showError();
+                            return;
                         }
+
+                        if (year < this.minYear || year > this.maxYear) {
+                            this.showError();
+                        } else {
+                            this.hideError();
+                        }
+                    } else {
+                        this.showError();
+                    }
+                }
+
+                isValidDate(day, month, year) {
+                    if (isNaN(day) || isNaN(month) || isNaN(year)) return false;
+                    if (year < 1900 || year > this.today.getFullYear()) return false;
+                    const date = new Date(year, month - 1, day);
+                    return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+                }
+
+                showError() {
+                    this.inputElement.value = '';
+                    if (this.errorMessageElement) {
+                        this.errorMessageElement.style.display = 'block';
+                    }
+                }
+
+                hideError() {
+                    if (this.errorMessageElement) {
+                        this.errorMessageElement.style.display = 'none';
+                    }
+                }
+
+                updateYearSpans() {
+                    if (this.minYearSpanElement) {
+                        this.minYearSpanElement.textContent = this.minYear;
+                    }
+                    if (this.maxYearSpanElement) {
+                        this.maxYearSpanElement.textContent = this.maxYear;
                     }
                 }
             }
 
             const dateInputs = [
-                { inputId: "input-date1", errorMessageId: "error-message-date1", minYearSpanId: "min-year1" },
-                { inputId: "input-date2", errorMessageId: "error-message-date2", minYearSpanId: "min-year2" },
-                { inputId: "input-date3", errorMessageId: "error-message-date3", minYearSpanId: "min-year3" },
-                { inputId: "input-date4", errorMessageId: "error-message-date4", minYearSpanId: "min-year4" }
+                { inputId: "input-date1", errorMessageId: "error-message-date1", minYearSpanId: "min-year1", maxYearSpanId: "max-year1", minAge: 0, maxAge: 120 },
+                { inputId: "input-date2", errorMessageId: "error-message-date2", minYearSpanId: "min-year2", maxYearSpanId: "max-year2", minAge: 0, maxAge: 120 },
+                { inputId: "input-date3", errorMessageId: "error-message-date3", minYearSpanId: "min-year3", maxYearSpanId: "max-year3", minAge: 0, maxAge: 120 },
+                { inputId: "input-date4", errorMessageId: "error-message-date4", minYearSpanId: "min-year4", maxYearSpanId: "max-year4", minAge: 0, maxAge: 16 }
             ];
 
-            dateInputs.forEach(({ inputId, errorMessageId, minYearSpanId }) => {
+            dateInputs.forEach(({ inputId, errorMessageId, minYearSpanId, maxYearSpanId, minAge, maxAge }) => {
                 const inputElement = document.getElementById(inputId);
                 const errorMessageElement = document.getElementById(errorMessageId);
                 const minYearSpanElement = document.getElementById(minYearSpanId);
+                const maxYearSpanElement = document.getElementById(maxYearSpanId);
 
-                if (inputElement && errorMessageElement && minYearSpanElement) {
-                    new DateValidator(inputElement, errorMessageElement, minYearSpanElement);
+                if (inputElement && errorMessageElement) {
+                    new DateValidator(inputElement, errorMessageElement, minYearSpanElement, maxYearSpanElement, minAge, maxAge);
                 }
             });
         });
@@ -543,6 +566,87 @@
         });
     </script>
 
+    <script>
+        document.getElementById('stay_days').addEventListener('input', function () {
+            let value = parseInt(this.value, 10);
+            if (value < 1) this.value = 1;
+            if (value > 365) this.value = 365;
+        });
+
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const roomSelect = document.getElementById("id_room");
+
+            roomSelect.addEventListener("change", function () {
+                const selectedOption = roomSelect.options[roomSelect.selectedIndex].text;
+                const match = selectedOption.match(/(\d+)\/(\d+)/);
+
+                if (match) {
+                    const livingRoom = parseInt(match[1]);
+                    const beds = parseInt(match[2]);
+
+                    if (livingRoom === beds) {
+                        Swal.fire({
+                            icon: "warning",
+                            title: "Комната заполнена!",
+                            text: "Выберите другую комнату.",
+                            confirmButtonColor: "#d33"
+                        });
+
+                        roomSelect.value = "";
+                    }
+                }
+            });
+        });
+    </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const maxItems = 30;
+            const repeaterList = document.querySelector("[data-repeater-list='group-a']");
+            const addButton = document.querySelector("[data-repeater-create]");
+            const limitMessage = document.createElement("p");
+
+            limitMessage.textContent = "Максимальное количество детей (30) достигнуто.";
+            limitMessage.classList.add("text-danger", "mt-2");
+            limitMessage.style.display = "none";
+            addButton.insertAdjacentElement("afterend", limitMessage);
+
+            function updateButtonState() {
+                const itemCount = repeaterList.querySelectorAll("[data-repeater-item]").length;
+                addButton.disabled = itemCount >= maxItems;
+                limitMessage.style.display = itemCount >= maxItems ? "block" : "none";
+            }
+
+            addButton.addEventListener("click", function () {
+                if (repeaterList.querySelectorAll("[data-repeater-item]").length < maxItems) {
+                    setTimeout(() => {
+                        updateButtonState();
+                        applyNameValidation(); // Применяем валидацию к новым элементам
+                    }, 50);
+                }
+            });
+
+            document.addEventListener("click", function (event) {
+                if (event.target.closest("[data-repeater-delete]")) {
+                    setTimeout(updateButtonState, 50);
+                }
+            });
+
+            function applyNameValidation() {
+                document.querySelectorAll("[id='child_name']").forEach(input => {
+                    input.addEventListener("input", function () {
+                        this.value = this.value.replace(/[А-Яа-яЁё]/g, "").toUpperCase();
+                    });
+                });
+            }
+
+            applyNameValidation();
+            updateButtonState();
+        });
+
+
+    </script>
 
 
     @endsection
@@ -826,7 +930,7 @@
                                             </div>
                                             <div class="mb-3">
                                                 <label for="stay_days">На сколько дней прибыл:</label>
-                                                <input type="number" id="stay_days" name="stay_days" class="form-control">
+                                                <input type="number" id="stay_days" name="stay_days" class="form-control" min="1" max="365" value="1" required>
                                             </div>
                                             <div class="mb-3">
                                                 <label for="id_visitType">Тип визита:</label>
@@ -886,10 +990,6 @@
                                             <div class="mb-3">
                                                 <label class="form-label" for="datekpp">Дата заезда КПП: </label>
                                                 <input type="date" id="datekpp" class="form-control form-text" readonly />
-                                                {{--                                                   <input id="input-date3" class="form-control input-mask-date" data-inputmask="'alias': 'datetime'" data-inputmask-inputformat="dd/mm/yyyy" readonly>--}}
-                                                {{--                                                   <div id="error-message-date3" class="text-danger" style="display: none; font-size: 0.875rem; margin-top: 5px;">--}}
-                                                {{--                                                       Дата должна быть не раньше чем <span id="min-year3"></span>.--}}
-                                                {{--                                                   </div>--}}
                                             </div>
                                         </div>
 
@@ -916,11 +1016,11 @@
                                                                 <input type="text" id="child_name" name="untyped-input" class="form-control" placeholder="" />
                                                             </div>
 
-                                                            <div  class="mb-3 col-md-4">
-                                                                <label class="form-label" for="input-date2">ДАТА РОЖДЕНИЕ: </label>
+                                                            <div class="mb-3 col-md-4">
+                                                                <label class="form-label" for="input-date4">ДАТА РОЖДЕНИЯ: </label>
                                                                 <input id="input-date4" class="form-control input-mask-date" data-inputmask="'alias': 'datetime'" data-inputmask-inputformat="dd/mm/yyyy">
                                                                 <div id="error-message-date4" class="text-danger" style="display: none; font-size: 0.875rem; margin-top: 5px;">
-                                                                    Дата должна быть не раньше чем <span id="min-year4"></span>.
+                                                                    Возраст ребёнка до 16 лет.
                                                                 </div>
                                                             </div>
 

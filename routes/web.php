@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ListokController;
+use App\Http\Controllers\TopMenuController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\PrivilegeController;
 use App\Http\Controllers\ProfileController;
@@ -42,6 +43,7 @@ Route::auto('users', UserController::class);
 
 
 Route::get('/listok/identify-qr/{id}', [ListokController::class, 'getIdentifyQr']);
+Route::get('/get-hotels-by-region/{regionId}', [ListokController::class, 'getHotelsByRegion']);
 
 Route::group(['middleware' => ['auth']], function () {
     Route::resource('users', UserController::class);
