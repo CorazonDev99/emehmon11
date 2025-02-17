@@ -210,12 +210,23 @@ class RoleController extends Controller
 
     public function destroy($id)
     {
+        $usersWithRole = DB::table('model_has_roles')->where('role_id', $id)->exists();
+
+        if ($usersWithRole) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Невозможно удалить роль, так как ей назначены пользователи.'
+            ]);
+        }
+
         DB::table('roles')->where('id', $id)->delete();
         DB::table('role_has_permissions')->where('role_id', $id)->delete();
         DB::table('model_has_roles')->where('role_id', $id)->delete();
         DB::table('cms_privileges_roles')->where('id_cms_privileges', $id)->delete();
 
-        return redirect()->route('roles.index')
-            ->with('success', 'Role deleted successfully');
+        return response()->json([
+            'success' => true,
+            'message' => 'Role deleted successfully'
+        ]);
     }
 }

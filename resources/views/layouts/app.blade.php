@@ -60,7 +60,6 @@
 
     @yield('style')
 
-
     <!-- Scripts -->
 </head>
 {{--preloader--}}

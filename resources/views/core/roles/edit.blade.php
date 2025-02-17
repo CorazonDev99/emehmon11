@@ -410,19 +410,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-2">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <label class="text-dark mb-2"><strong>SuperAdmin:</strong></label><br>
-                                </div>
-                                <div class="col-md-6 mt-1">
-                                    <div class="checkbox-wrapper-14">
-                                        <input id="s1-14" type="checkbox" name="is_admin" class="switch"
-                                               @if(old('is_admin', $role->is_admin)) checked @endif>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+
 
                     </div>
                     <div class="mb-4">

@@ -56,40 +56,6 @@
                 </div>
             </div>
 
-{{--            <div class="dropdown d-inline-block language-switch">--}}
-{{--                <button type="button" class="btn header-item waves-effect"--}}
-{{--                        data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">--}}
-{{--                    <img class="" src="assets/images/flags/us.jpg" alt="Header Language" height="16"--}}
-{{--                         style="height: 18px;">--}}
-{{--                </button>--}}
-{{--                <div class="dropdown-menu dropdown-menu-end">--}}
-
-{{--                    <!-- item-->--}}
-{{--                    <a href="javascript:void(0);" class="dropdown-item notify-item d-flex align-items-center">--}}
-{{--                        <img src="assets/images/flags/spain.jpg" alt="user-image" class="me-1" style="height: 12px;">--}}
-{{--                        <span class="align-middle">Spanish</span>--}}
-{{--                    </a>--}}
-
-{{--                    <!-- item-->--}}
-{{--                    <a href="javascript:void(0);" class="dropdown-item notify-item d-flex align-items-center">--}}
-{{--                        <img src="assets/images/flags/germany.jpg" alt="user-image" class="me-1" style="height: 12px;">--}}
-{{--                        <span class="align-middle">German</span>--}}
-{{--                    </a>--}}
-
-{{--                    <!-- item-->--}}
-{{--                    <a href="javascript:void(0);" class="dropdown-item notify-item d-flex align-items-center">--}}
-{{--                        <img src="assets/images/flags/italy.jpg" alt="user-image" class="me-1" style="height: 12px;">--}}
-{{--                        <span class="align-middle">Italian</span>--}}
-{{--                    </a>--}}
-
-{{--                    <!-- item-->--}}
-{{--                    <a href="javascript:void(0);" class="dropdown-item notify-item d-flex align-items-center">--}}
-{{--                        <img src="assets/images/flags/russia.jpg" alt="user-image" class="me-1" style="height: 12px;">--}}
-{{--                        <span class="align-middle">Russian</span>--}}
-{{--                    </a>--}}
-{{--                </div>--}}
-{{--            </div>--}}
-
             <div class="dropdown d-inline-block">
 
                 <button type="button" class="btn header-item noti-icon waves-effect"
@@ -253,7 +219,6 @@
                         <i class="uil uil-key-skeleton font-size-18 align-middle text-muted me-1"></i>
                         <span class="align-middle">Permissions</span>
                     </a>
-
                     <a class="dropdown-item" href="{{ route('logout') }}"
                        onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
                         <i class="uil uil-sign-out-alt font-size-18 align-middle me-1 text-muted"></i>

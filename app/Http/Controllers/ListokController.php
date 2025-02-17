@@ -714,7 +714,7 @@ class ListokController extends Controller
             }
 
             session()->flash('success', 'Данные успешно сохранены');
-            return response()->json(['status' => 'success', 'rowhash' => $rowhash]); // Возвращаем хэш в ответе
+            return response()->json(['status' => 'success', 'rowhash' => $rowhash]);
         } else {
             return response()->json(['status' => 'error']);
         }

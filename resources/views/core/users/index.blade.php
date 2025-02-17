@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('header_title', 'Users')
+@section('header_title', 'Core Users')
 @section('style')
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery-confirm@3.3.0/dist/jquery-confirm.min.css">
@@ -9,9 +9,11 @@
 <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
 
 <style>
+
     .card{
         margin-bottom: 0 !important;
     }
+
     .modal {
         display: none;
         position: fixed;
@@ -70,6 +72,8 @@
         text-decoration: none;
         cursor: pointer;
     }
+
+
 
 
 
@@ -144,6 +148,30 @@
     }
 </style>
 
+<style>
+    .checkmark {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        background-color: #d4edda; /* Светло-зелёный фон */
+        border-radius: 4px;
+        position: relative;
+        margin-right: 10px;
+    }
+
+    .checkmark::after {
+        content: "✔";
+        font-size: 14px;
+        color: #155724; /* Тёмно-зелёный */
+        font-weight: bold;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+</style>
+
 @endsection
 
 
@@ -161,8 +189,13 @@
         const rolesEdit = @json($rolesEdit);
         const permissions = @json($permissions);
         const userPermissions = @json($userPermissions);
+        const regions = @json($regions);
+        const hotels = @json($hotels);
+        const mvds = @json($mvd);
     </script>
     <script>
+
+
         $(document).ready(function () {
             var user = $('#userTable')
 
@@ -177,6 +210,7 @@
                         d.email = $('#email-filter').val();
                         d.hotel_name = $('#hotelName-filter').val();
                         d.region_name = $('#regionName-filter').val();
+                        d.status = $('#status-filter').val();
                     }
                 },
                 columns: [
@@ -194,8 +228,9 @@
                     { data: 'name', title: 'Name' },
                     { data: 'email', title: 'Email' },
                     { data: 'username', title: 'Username' },
-                    { data: 'hotel_name', title: 'Гостиница' },
-                    { data: 'region_name', title: 'Регион' },
+                    { data: 'hotel_name', title: 'Organization' },
+                    { data: 'region_name', title: 'Region' },
+                    { data: 'last_login', title: 'Last LogIn' },
                     { data: 'avatar', title: 'Avatar' },
                     {
                         data: null,
@@ -207,13 +242,13 @@
                         render: function (data, type, row) {
                             return `
                        <div class="d-flex text-center">
-                            <button class="btn btn-sm btn-outline-success show-user me-2" data-id="${row.user_id}">
+                            <button class="btn btn-sm btn-success show-user me-2" data-id="${row.user_id}">
                                 <i class="fas fa-eye"></i>
                             </button>
-                            <button class="btn btn-sm btn-outline-warning edit-user me-2" data-id="${row.user_id}">
+                            <button class="btn btn-sm btn-warning edit-user me-2 ${row.deleted_at ? 'd-none btn-warning' : ''}" data-id="${row.user_id}">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button class="btn btn-sm btn-outline-danger delete-user" data-id="${row.user_id}">
+                            <button class="btn btn-sm btn-danger delete-user ${row.deleted_at ? 'd-none' : ''}" data-id="${row.user_id}">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
@@ -221,6 +256,23 @@
                         }
                     }
                 ],
+                rowCallback: function(row, data, index) {
+                    if (data['active'] === 0 && data['deleted_at'] === null) {
+                        $(row).css({
+                            'background-color': '#fb989d',
+                            'color': 'white'
+                        });
+                    }
+
+                    if (data['deleted_at'] && data['deleted_at'] !== null) {
+                        $(row).css({
+                            'background-color': 'rgba(255,0,11,0.8)',
+                            'color': 'white'
+                        });
+                    }
+                },
+
+
                 responsive: true,
                 pageLength: 25,
                 autoWidth: false,
@@ -288,6 +340,7 @@
                 $('#email-filter').val('');
                 $('#hotelName-filter').val('').trigger('change');
                 $('#regionName-filter').val('').trigger('change');
+                $('#status-filter').val('').trigger('change');
                 table.ajax.params = {};
                 table.search('').columns().search('');
                 table.ajax.reload();
@@ -328,54 +381,95 @@
                     </ul>
                     <div class="tab-content" id="userTabsContent">
                         <div class="tab-pane fade show active" id="profile" role="tabpanel" aria-labelledby="profile-tab">
-                            <div class="row align-items-center">
+                            <div class="row">
                                 <div class="col-md-3 text-center mb-3">
-                                   <img
-                                        src="${avatarSrc ? avatarSrc : ''}"
-                                        alt="Profile Image"
-                                        class="img-fluid border ${avatarSrc ? '' : 'd-none'}"
-                                        style="width: 200px; height: 200px; object-fit: cover; border-radius: 50%;">
-
+                                    <img src="${avatarSrc ? avatarSrc : ''}"
+                                         alt="Profile Image"
+                                         class="border ${avatarSrc ? '' : 'd-none'}"
+                                         style="width: 200px; height: 200px; object-fit: cover; border-radius: 10%;">
                                     <i class="fa fa-user ${avatarSrc ? 'd-none' : ''}" style="font-size: 200px;"></i>
                                 </div>
-                                <div class="col-md-8">
-                                    <div class="form-group mb-2">
-                                        <strong>Name:</strong>
-                                        <p class="mb-0">${rowData.name || ''} ${rowData.last_name || ''}</p>
-                                    </div>
 
-                                    <div class="form-group mb-2">
-                                        <strong>Username:</strong>
-                                        <p class="mb-0">${rowData.username || ''}</p>
-                                    </div>
-                                    <div class="form-group mb-2">
-                                        <strong>Email:</strong>
-                                        <p class="mb-0">${rowData.email || ''}</p>
-                                    </div>
-                                    <div class="form-group mb-2">
-                                        <strong>Hotel:</strong>
-                                        <p class="mb-0">${rowData.hotel_name || ''}</p>
-                                    </div>
-                                    <div class="form-group mb-2">
-                                        <strong>Region:</strong>
-                                        <p class="mb-0">${rowData.region_name || ''}</p>
-                                    </div>
+                                <div class="col-md-9">
+                                    <table class="table dataTable row-border table-hover">
+                                        <tbody>
+                                            <tr>
+                                                <th>First Name:</th>
+                                                <td>${rowData.name || ''}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Last Name:</th>
+                                                <td>${rowData.last_name || ''}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Username:</th>
+                                                <td>${rowData.username || ''}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Email:</th>
+                                                <td>${rowData.email || ''}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Created By:</th>
+                                                <td>${rowData.created_by_first_name || ''} ${rowData.created_by_last_name || ''}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Hotel:</th>
+                                                <td>${rowData.hotel_name || ''}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Region:</th>
+                                                <td>${rowData.region_name || ''}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>MVD_VISA_CODE:</th>
+                                                <td>(${rowData.code || ''}) ${rowData.sticker_name || ''} - ${rowData.mvd_name || ''} </td>
+                                            </tr>
+                                            <tr>
+                                                <th>Created:</th>
+                                                <td>${rowData.created_at || ''}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Last Login:</th>
+                                                <td>${rowData.last_login || ''}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Updated:</th>
+                                                <td>${rowData.updated_at || ''}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Status:</th>
+                                                <td>
+                                                    <span class="p-1 mt-1 rounded text-white" style="background-color: ${rowData.deleted_at !== null ? 'rgba(255,0,11,0.8)' : (rowData.active == 1 ? '#28a745' : '#fb989d')};">
+                                                        ${rowData.deleted_at !== null ? 'Удалённый' : (rowData.active == 1 ? 'Активный' : 'Неактивный')}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
+
                         </div>
 
-                        <div class="tab-pane fade" id="roles" role="tabpanel" aria-labelledby="roles-tab">
-                            <div class="row">
-                                <div class="col-xs-12 col-sm-12 col-md-12">
-                                    <div class="form-group">
-                                        <strong>Role:</strong>
-                                       <ul class="list-group mt-2">
-                                            ${rowData.role_name || 'No role assigned'}
-                                        </ul>
-                                    </div>
-                                </div>
+                  <div class="tab-pane fade" id="roles" role="tabpanel" aria-labelledby="roles-tab">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-12 col-md-12">
+                            <div class="form-group">
+                                <strong>Role:</strong>
+                                <ul class="list-group mt-2">
+                                    ${
+                                    rowData.role_name
+                                        ? `<li class="list-group-item d-flex align-items-center">
+                                                <span class="checkmark"></span> ${rowData.role_name}
+                                               </li>`
+                                        : '<li class="list-group-item">No role assigned</li>'
+                                }
+                                </ul>
                             </div>
                         </div>
+                    </div>
+                    </div>
 
                         <div class="tab-pane fade" id="permissions" role="tabpanel" aria-labelledby="permissions-tab">
                             <div class="row">
@@ -384,19 +478,22 @@
                                         <strong>Permissions:</strong>
                                         <ul class="list-group mt-2">
                                            ${
-                                                Array.isArray(userPermissions) && userPermissions.length > 0
-                                                    ? userPermissions
-                                                        .filter(permission => permission.model_id === rowData.user_id)
-                                                        .map(permission =>
-                                                            `<li class="list-group-item">${permission.name}</li>`
-                                                        ).join('')
-                                                    : 'No permissions assigned'
-                                            }
+                                            Array.isArray(userPermissions) && userPermissions.length > 0
+                                                ? userPermissions
+                                                    .filter(permission => permission.model_id === rowData.user_id)
+                                                    .map(permission =>
+                                                        `<li class="list-group-item d-flex align-items-center">
+                                                                <span class="checkmark"></span> ${permission.name}
+                                                            </li>`
+                                                    ).join('')
+                                                : '<li class="list-group-item">No permissions assigned</li>'
+                                        }
                                         </ul>
                                     </div>
                                 </div>
                             </div>
                         </div>
+
                     </div>
                 </div>
             </div>
@@ -413,11 +510,11 @@
             });
 
 
-
             // Edit User
             user.on('click', '.edit-user', function () {
                 var rowData = table.row($(this).closest('tr')).data();
                 let croppedImage = null;
+
 
                 if (!rowData) {
                     $.alert('Не удалось найти данные строки!');
@@ -426,6 +523,7 @@
 
                 var avatarSrc = (rowData.avatar && rowData.avatar.match(/src="([^"]+)"/)) ? rowData.avatar.match(/src="([^"]+)"/)[1] : '';
                 currentAvatar = avatarSrc;
+
                 $.confirm({
                     title: 'Edit User',
                     type: 'blue',
@@ -435,6 +533,20 @@
                         "<div class='add-user'>" +
                         '<form id="userForm">' +
                         "<div class='row align-items-center mb-3'>" +
+                        "<label class='col-md-3'>Profile Picture:</label>" +
+                        "<div class='col-md-6 search-input mb-1'>" +
+                        `<div id="avatar-container" style="position: relative; display: inline-block;">
+                                ${avatarSrc ?
+                                `<img id="old-avatar" src="${avatarSrc}" style="max-width: 150px; border-radius: 80px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">` :
+                                `<i class="fas fa-user" style="font-size: 100px; color: #ccc; border-radius: 50%; background: #f0f0f0; padding: 20px;"></i>`}
+                            <div id="edit-avatar" style="position: absolute; bottom: 5px; right: 5px; background: rgba(0, 0, 0, 0.5); color: white; padding: 8px; border-radius: 50%; cursor: pointer;">
+                                <i class="fas fa-camera"></i>
+                            </div>
+                        </div>` +
+                        `<input id="avatar" type="file" name="avatar" class="form-control" style="display: none;">` +
+                        '</div>' +
+                        '</div>' +
+                    "<div class='row align-items-center mb-3'>" +
                         "<label class='col-md-3'>First Name:</label>" +
                         "<div class='col-md-6 search-input'>" +
                         `<input type="text" id="first_name" class="form-control" value="${rowData.name || ''}" required />` +
@@ -456,15 +568,6 @@
                         "<label class='col-md-3'>Email:</label>" +
                         "<div class='col-md-6 search-input'>" +
                         `<input type="email" id="email" class="form-control" value="${rowData.email || ''}" required />` +
-                        '</div>' +
-                        '</div>' +
-                        "<div class='row align-items-center mb-3'>" +
-                        "<label class='col-md-3'>Profile Picture:</label>" +
-                        "<div class='col-md-6 search-input mb-1'>" +
-                        `<input id="avatar" type="file" name="avatar" class="form-control">` +
-                        `<div id="preview-container" style="margin-top: 10px; max-width:100%;">
-                            ${avatarSrc ? `<img id="old-avatar" src="${avatarSrc}" style="max-width: 100px; border-radius: 5px;">` : ''}
-                        </div>` +
                         '</div>' +
                         '</div>' +
                         "<div class='row align-items-center mb-3'>" +
@@ -495,7 +598,6 @@
                                 const selected = rowData.role_id === role.id ? 'selected' : '';
                                 return `<option value="${role.id}" ${selected}>${role.name}</option>`;
                             }
-
                         }).join('') +
                         '</select>' +
                         '</div>' +
@@ -505,19 +607,67 @@
                         "<div class='col-md-6 search-input'>" +
                         '<div class="form-check">' +
                         permissions.map(permission => {
+                            const isSpecialPermission = ["REPUBLIC_ACCESS", "REGIONAL_ACCESS", "LOCAL_ACCESS"].includes(permission.name);
                             const checked = userPermissions.some(userPermission =>
                                 userPermission.model_id === rowData.user_id && userPermission.id === permission.id
                             ) ? 'checked' : '';
-                            return `
-                                <div>
-                                    <input type="checkbox" class="form-check-input" id="permission-${permission.id}"
-                                        value="${permission.id}" ${checked}>
-                                    <label class="form-check-label" for="permission-${permission.id}">
-                                        ${permission.name}
-                                    </label>
-                                </div>`;
+
+                            if (isSpecialPermission) {
+                                return `
+                    <div>
+                        <input type="radio" class="form-check-input special-permission"
+                               id="permission-${permission.id}" name="special_permissions"
+                               value="${permission.id}" ${checked}>
+                        <label class="form-check-label" for="permission-${permission.id}">
+                            ${permission.name}
+                        </label>
+                    </div>`;
+                            }
+                            else {
+                                return `
+                    <div>
+                        <input type="checkbox" class="form-check-input"
+                               id="permission-${permission.id}" name="permissions[]"
+                               value="${permission.id}" ${checked}>
+                        <label class="form-check-label" for="permission-${permission.id}">
+                            ${permission.name}
+                        </label>
+                    </div>`;
+                            }
                         }).join('') +
                         '</div>' +
+                        '</div>' +
+                        '</div>' +
+                        "<div class='row align-items-center mb-3' id='mvd-visa-code-row' style='display: none;'>" +
+                        "<label class='col-md-3'>MVD_VISA_CODE:</label>" +
+                        "<div class='col-md-6 search-input'>" +
+                        '<select id="mvd" name="mvd" class="form-control">' +
+                        "<option value=''>-- NOT SELECTED --</option>" +
+                        mvds.map(mvdOrg => {
+                            const selected = rowData.mrz_code === mvdOrg.sticker_code ? 'selected' : '';
+                            return `<option value="${mvdOrg.sticker_code}" ${selected}>(${mvdOrg.code}) ${mvdOrg.sticker_name} - ${mvdOrg.mvd_name}</option>`;
+                        }).join('') +
+                        '</select>' +
+                        '</div>' +
+                        '</div>' +
+                        "<div class='row align-items-center mb-3'>" +
+                        "<label class='col-md-3'>Region:</label>" +
+                        "<div class='col-md-6 search-input'>" +
+                        '<select id="region" name="region" class="form-control">' +
+                        "<option value=''>-- SELECT REGION --</option>" +
+                        regions.map(region => {
+                            const selected = rowData.id_region === region.id ? 'selected' : '';
+                            return `<option value="${region.id}" ${selected}>${region.name}</option>`;
+                        }).join('') +
+                        '</select>' +
+                        '</div>' +
+                        '</div>' +
+                        "<div class='row align-items-center mb-3' id='hotel-row' style='display: none;'>" +
+                        "<label class='col-md-3'>Hotel:</label>" +
+                        "<div class='col-md-6 search-input'>" +
+                        '<select id="hotel" name="hotel" class="form-control">' +
+                        "<option value=''>-- SELECT HOTEL --</option>" +
+                        '</select>' +
                         '</div>' +
                         '</div>' +
                         '</form>' +
@@ -529,7 +679,6 @@
                             btnClass: 'btn-primary',
                             action: function () {
                                 var self = this;
-
                                 var formData = new FormData();
 
                                 const email = $('#email').val();
@@ -544,6 +693,37 @@
                                     return false;
                                 }
 
+                                const region = $('#region').val();
+                                const hotel = $('#hotel').val();
+
+                                if (!region) {
+                                    Swal.fire({
+                                        icon: 'warning',
+                                        title: 'Ошибка!',
+                                        text: 'Выберите регион!',
+                                    });
+                                    return false;
+                                }
+
+                                if ($('#hotel-row').is(':visible') && !hotel) {
+                                    Swal.fire({
+                                        icon: 'warning',
+                                        title: 'Ошибка!',
+                                        text: 'Выберите отель!',
+                                    });
+                                    return false;
+                                }
+                                const specialPermission = $('input[name="special_permissions"]:checked').val();
+                                const otherPermissions = [];
+                                $('input[name="permissions[]"]:checked').each(function () {
+                                    otherPermissions.push($(this).val());
+                                });
+
+                                const allPermissions = [];
+                                if (specialPermission) {
+                                    allPermissions.push(specialPermission);
+                                }
+                                allPermissions.push(...otherPermissions);
                                 formData.append('user_id', rowData.user_id);
                                 formData.append('first_name', $('#first_name').val());
                                 formData.append('last_name', $('#last_name').val());
@@ -551,14 +731,13 @@
                                 formData.append('email', email);
                                 if (croppedImage) {
                                     formData.append('avatar', croppedImage, 'cropped-image.png');
-                                }                                formData.append('password', $('#password').val());
+                                }
+                                formData.append('password', $('#password').val());
                                 formData.append('password_confirmation', $('#confirm-password').val());
                                 formData.append('role_id', $('#roles').val());
-                                var selectedPermissions = [];
-                                $('input[type="checkbox"]:checked').each(function () {
-                                    selectedPermissions.push($(this).val());
-                                });
-                                formData.append('permissions', JSON.stringify(selectedPermissions));
+                                formData.append('mrz_code', $('#mvd').val());
+                                formData.append('permissions', JSON.stringify(allPermissions));
+                                formData.append('id_hotel', hotel);
                                 formData.append('_token', '{{ csrf_token() }}');
 
                                 $.ajax({
@@ -570,7 +749,6 @@
                                     success: function (response) {
                                         if (response.success) {
                                             self.close();
-
                                             Swal.fire({
                                                 icon: 'success',
                                                 title: response.message,
@@ -594,24 +772,104 @@
                                             confirmButtonText: 'OK'
                                         });
                                         return false;
-
                                     }
                                 });
                                 return false;
-
                             }
                         },
                         cancel: {
                             text: 'Cancel',
                             btnClass: 'btn-danger'
-                        },
-
+                        }
                     },
                     onContentReady: function () {
+                        // filtr MVD
+                        $(document).ready(function () {
+                            filterHotels();
+                        });
+
+                        $(document).on('change', 'input[name="permissions[]"], #region', function () {
+                            filterHotels();
+                        });
+
+                        function filterHotels() {
+                            const isMvdAccessChecked = $('input[name="permissions[]"]:checked').filter(function () {
+                                return $(this).next('label').text().trim() === "MVD_ACCESS";
+                            }).length > 0;
+
+                            const regionId = $('#region').val();
+                            if (!regionId) return;
+
+                            let filteredHotels = hotels.filter(hotel => hotel.id_region == parseInt(regionId));
+
+                            if (isMvdAccessChecked) {
+                                filteredHotels = filteredHotels.filter(hotel => hotel.hotel_type_id == 31);
+                            } else {
+                                filteredHotels = filteredHotels.filter(hotel => hotel.hotel_type_id != 31);
+                            }
+
+                            updateHotelSelect(filteredHotels, isMvdAccessChecked);
+                        }
+
+                        function updateHotelSelect(filteredHotels, isMvdAccessChecked) {
+                            const selectedHotelId = $('#hotel').val();
+                            const hotelOptions = filteredHotels.map(hotel =>
+                                `<option value="${hotel.id}" ${hotel.id == selectedHotelId ? 'selected' : ''}>${hotel.name}</option>`
+                            ).join('');
+
+                            $('#hotel').html("<option value=''>-- NOT SELECTED --</option>" + hotelOptions);
+                        }
+
+
+
+
+
+
+                        // filtr VISA_PRINT_ACCESS
+                        function toggleVisaCodeField() {
+                            if ($('#permission-' + permissions.find(p => p.name === 'VISA_PRINT_ACCESS').id).is(':checked')) {
+                                $('#mvd-visa-code-row').show();
+                            } else {
+                                $('#mvd-visa-code-row').hide();
+                            }
+                        }
+
+                        toggleVisaCodeField();
+
+                        $(document).on('change', '#permission-' + permissions.find(p => p.name === 'VISA_PRINT_ACCESS').id, function () {
+                            toggleVisaCodeField();
+                        });
+
+
                         if (permissions.length == 0) {
                             $('#permission-row').hide();
-
                         }
+
+                        $('#region').on('change', function () {
+                            const regionId = $(this).val();
+                            if (regionId) {
+                                $('#hotel-row').show();
+                                const filteredHotels = hotels.filter(hotel => hotel.id_region == regionId);
+                                $('#hotel').html('<option value="">-- SELECT HOTEL --</option>' +
+                                    filteredHotels.map(hotel => `<option value="${hotel.id}">${hotel.name}</option>`).join(''));
+                            } else {
+                                $('#hotel-row').hide();
+                                $('#hotel').html('<option value="">-- SELECT HOTEL --</option>');
+                            }
+                        });
+
+                        const initialRegionId = $('#region').val();
+                        if (initialRegionId) {
+                            $('#hotel-row').show();
+                            const filteredHotels = hotels.filter(hotel => hotel.id_region == initialRegionId);
+                            $('#hotel').html('<option value="">-- SELECT HOTEL --</option>' +
+                                filteredHotels.map(hotel => `<option value="${hotel.id}" ${rowData.id_hotel === hotel.id ? 'selected' : ''}>${hotel.name}</option>`).join(''));
+                        }
+
+                        document.getElementById('edit-avatar').addEventListener('click', function () {
+                            document.getElementById('avatar').click();
+                        });
+
                         document.getElementById('avatar').addEventListener('change', function () {
                             const file = this.files[0];
                             if (!file) return;
@@ -645,7 +903,19 @@
                                                 canvas.toBlob((blob) => {
                                                     croppedImage = blob;
                                                     const url = URL.createObjectURL(blob);
-                                                    $('#preview-container').html('<img src="' + url + '" style="max-width: 100px; border-radius: 5px;">');
+
+                                                    // Обновляем только изображение внутри #avatar-container, сохраняя кнопку редактирования
+                                                    $('#avatar-container').html(`
+                                <img src="${url}" style="max-width: 150px; border-radius: 80px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                <div id="edit-avatar" style="position: absolute; bottom: 5px; right: 5px; background: rgba(0, 0, 0, 0.5); color: white; padding: 8px; border-radius: 50%; cursor: pointer;">
+                                    <i class="fas fa-camera"></i>
+                                </div>
+                            `);
+
+                                                    // Повторно добавляем обработчик события для кнопки редактирования
+                                                    document.getElementById('edit-avatar').addEventListener('click', function () {
+                                                        document.getElementById('avatar').click();
+                                                    });
                                                 }, 'image/png');
                                             }
                                         },
@@ -716,6 +986,8 @@
     <script>
         $(document).ready(function () {
             let croppedImage = null;
+
+
             $('#create-user').on('click', function () {
                 $.confirm({
                     title: 'Create User',
@@ -725,6 +997,18 @@
                     content: '' +
                         "<div class='add-user'>" +
                         '<form id="userForm">' +
+                        "<div class='row align-items-center mb-3'>" +
+                        "<label class='col-md-3'>Profile Picture:</label>" +
+                        "<div class='col-md-6 search-input'>" +
+                        `<div id="avatar-container" style="position: relative; display: inline-block;">
+                        <i class="fas fa-user" style="font-size: 100px; color: #ccc; border-radius: 50%; background: #f0f0f0; padding: 20px;"></i>
+                        <div id="edit-avatar" style="position: absolute; bottom: 5px; right: 5px; background: rgba(0, 0, 0, 0.5); color: white; padding: 8px; border-radius: 50%; cursor: pointer;">
+                            <i class="fas fa-camera"></i>
+                        </div>
+                        </div>` +
+                        '<input id="avatar" type="file" name="avatar" class="form-control" style="display: none;">' +
+                        '</div>' +
+                        '</div>' +
                         "<div class='row align-items-center mb-3'>" +
                         "<label class='col-md-3'>First Name:</label>" +
                         "<div class='col-md-6 search-input'>" +
@@ -749,13 +1033,7 @@
                         '<input type="email" id="email" class="form-control" placeholder="Email" required />' +
                         '</div>' +
                         '</div>' +
-                        "<div class='row align-items-center mb-3'>" +
-                        "<label class='col-md-3'>Profile Picture:</label>" +
-                        "<div class='col-md-6 search-input'>" +
-                        '<input id="avatar" type="file" name="avatar" class="form-control">' +
-                        '<div id="preview-container" style="margin-top: 10px;"></div>' +
-                        '</div>' +
-                        '</div>' +
+
                         "<div class='row align-items-center mb-3'>" +
                         "<label class='col-md-3'>Password:</label>" +
                         "<div class='col-md-6 search-input'>" +
@@ -780,12 +1058,52 @@
                         "<div class='row align-items-center mb-3' id='permission-row'>" +
                         "<label class='col-md-3'>Permission:</label>" +
                         "<div class='col-md-6 search-input'>" +
-                        permissions.map(permission =>
-                            `<div class="form-check">
-                                <input type="checkbox" class="form-check-input" id="permission_${permission.id}" name="permissions[]" value="${permission.id}">
-                                <label class="form-check-label" for="permission_${permission.id}">${permission.name}</label>
-                            </div>`
-                        ).join('') +
+                        permissions.map(permission => {
+                            const isSpecialPermission = ["REPUBLIC_ACCESS", "REGIONAL_ACCESS", "LOCAL_ACCESS"].includes(permission.name);
+                            if (isSpecialPermission) {
+                                return `
+                                <div class="form-check">
+                                    <input type="radio" class="form-check-input special-permission"
+                                           id="permission_${permission.id}" name="special_permissions" value="${permission.id}">
+                                    <label class="form-check-label" for="permission_${permission.id}">${permission.name}</label>
+                                </div>
+                            `;
+                            } else {
+                                return `
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input"
+                                           id="permission_${permission.id}" name="permissions[]" value="${permission.id}">
+                                    <label class="form-check-label" for="permission_${permission.id}">${permission.name}</label>
+                                </div>
+                            `;
+                            }
+                        }).join('') +
+                        '</div>' +
+                        '</div>' +
+                        "<div class='row align-items-center mb-3' id='mvd-visa-code-row' style='display: none;'>" +
+                        "<label class='col-md-3'>MVD_VISA_CODE:</label>" +
+                        "<div class='col-md-6 search-input'>" +
+                        '<select id="mvd" name="mvd" class="form-control">' +
+                        "<option value=''>-- NOT SELECTED --</option>" +
+                        mvds.map(mvd => `<option value="${mvd.sticker_code}">(${mvd.code}) ${mvd.sticker_name} - ${mvd.mvd_name}</option>`).join('') +
+                        '</select>' +
+                        '</div>' +
+                        '</div>' +
+                        "<div class='row align-items-center mb-3'>" +
+                        "<label class='col-md-3'>Region:</label>" +
+                        "<div class='col-md-6 search-input'>" +
+                        '<select id="region" name="region" class="form-control">' +
+                        "<option value=''>-- NOT SELECTED --</option>" +
+                        regions.map(region => `<option value="${region.id}">${region.name}</option>`).join('') +
+                        '</select>' +
+                        '</div>' +
+                        '</div>' +
+                        "<div class='row align-items-center mb-3' id='hotel-row' style='display: none;'>" +
+                        "<label class='col-md-3'>Hotel:</label>" +
+                        "<div class='col-md-6 search-input'>" +
+                        '<select id="hotel" name="hotel" class="form-control">' +
+                        "<option value=''>-- NOT SELECTED --</option>" +
+                        '</select>' +
                         '</div>' +
                         '</div>' +
                         '</form>' +
@@ -809,6 +1127,40 @@
                                     });
                                     return false;
                                 }
+
+                                const region = $('#region').val();
+                                const hotel = $('#hotel').val();
+
+                                if (!region) {
+                                    Swal.fire({
+                                        icon: 'warning',
+                                        title: 'Ошибка!',
+                                        text: 'Выберите регион!',
+                                    });
+                                    return false;
+                                }
+
+                                if ($('#hotel-row').is(':visible') && !hotel) {
+                                    Swal.fire({
+                                        icon: 'warning',
+                                        title: 'Ошибка!',
+                                        text: 'Выберите организацию!',
+                                    });
+                                    return false;
+                                }
+
+                                const specialPermission = $('input[name="special_permissions"]:checked').val();
+                                const otherPermissions = [];
+                                $('input[name="permissions[]"]:checked').each(function () {
+                                    otherPermissions.push($(this).val());
+                                });
+
+                                const allPermissions = [];
+                                if (specialPermission) {
+                                    allPermissions.push(specialPermission);
+                                }
+                                allPermissions.push(...otherPermissions);
+
                                 formData.append('first_name', $('#first_name').val());
                                 formData.append('last_name', $('#last_name').val());
                                 formData.append('username', $('#username').val());
@@ -819,12 +1171,10 @@
                                 formData.append('password', $('#password').val());
                                 formData.append('password_confirmation', $('#confirm-password').val());
                                 formData.append('role_id', $('#roles').val());
+                                formData.append('mrz_code', $('#mvd').val());
+                                formData.append('id_hotel', hotel);
                                 formData.append('_token', '{{ csrf_token() }}');
-                                var selectedPermissions = [];
-                                $('input[name="permissions[]"]:checked').each(function() {
-                                    selectedPermissions.push($(this).val());
-                                });
-                                formData.append('permissions', JSON.stringify(selectedPermissions));
+                                formData.append('permissions', JSON.stringify(allPermissions));
                                 formData.append('_token', '{{ csrf_token() }}');
                                 $.ajax({
                                     url: '{{ route("users.createUser") }}',
@@ -842,7 +1192,6 @@
                                                 timer: 1500
                                             }).then(() => {
                                                 location.reload();
-
                                             });
                                         } else {
                                             Swal.fire({
@@ -870,12 +1219,78 @@
                         }
                     },
                     onContentReady: function () {
+                        // filtr MVD
+                        $(document).on('change', 'input[name="permissions[]"], #region', function () {
+                            filterHotels();
+                        });
+
+                        function filterHotels() {
+                            const isMvdAccessChecked = $('input[name="permissions[]"]:checked').filter((_, el) => $(el).next('label').text() === "MVD_ACCESS").length > 0;
+                            const regionId = $('#region').val();
+
+                            let filteredHotels = hotels;
+
+                            if (isMvdAccessChecked) {
+                                filteredHotels = hotels.filter(hotel => hotel.hotel_type_id === 31 && hotel.id_region === parseInt(regionId));
+                            } else {
+                                filteredHotels = hotels.filter(hotel => hotel.hotel_type_id !== 31 && hotel.id_region === parseInt(regionId));
+                            }
+
+                            updateHotelSelect(filteredHotels);
+                        }
+
+                        function updateHotelSelect(filteredHotels) {
+                            const hotelOptions = filteredHotels.map(hotel => `<option value="${hotel.id}">${hotel.name}</option>`).join('');
+                            $('#hotel').html("<option value=''>-- NOT SELECTED --</option>" + hotelOptions);
+                        }
+
+
+
+
+                        // filtr VISA_PRINT_ACCESS
+                        function toggleMvdVisaCode() {
+                            let isChecked = $('input[name="permissions[]"][id^="permission_"]').filter(function () {
+                                return $(this).next('label').text().trim() === "VISA_PRINT_ACCESS" && $(this).prop('checked');
+                            }).length > 0;
+
+                            if (isChecked) {
+                                $('#mvd-visa-code-row').show();
+                            } else {
+                                $('#mvd-visa-code-row').hide();
+                            }
+                        }
+
+                        $(document).on('change', 'input[name="permissions[]"]', toggleMvdVisaCode);
+                        toggleMvdVisaCode();
+
+
+
+
                         if (permissions.length == 0) {
                             $('#permission-row').hide();
                         }
+
+                        $('#region').on('change', function () {
+                            const regionId = $(this).val();
+                            if (regionId) {
+                                $('#hotel-row').show();
+                                const filteredHotels = hotels.filter(hotel => hotel.id_region == regionId);
+                                $('#hotel').html('<option value="">-- SELECT HOTEL --</option>' +
+                                    filteredHotels.map(hotel => `<option value="${hotel.id}">${hotel.name}</option>`).join(''));
+                            } else {
+                                $('#hotel-row').hide();
+                                $('#hotel').html('<option value="">-- SELECT HOTEL --</option>');
+                            }
+                        });
+
+                        document.getElementById('edit-avatar').addEventListener('click', function () {
+                            document.getElementById('avatar').click();
+                        });
+
                         document.getElementById('avatar').addEventListener('change', function () {
                             const file = this.files[0];
                             if (!file) return;
+
                             const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
                             if (!allowedTypes.includes(file.type)) {
                                 Swal.fire({ icon: 'warning', title: 'Недопустимый формат!', text: 'Допустимые форматы: JPEG, PNG, GIF' });
@@ -905,7 +1320,16 @@
                                                 canvas.toBlob((blob) => {
                                                     croppedImage = blob;
                                                     const url = URL.createObjectURL(blob);
-                                                    $('#preview-container').html('<img src="' + url + '" style="max-width: 100px; border-radius: 5px;">');
+                                                    $('#avatar-container').html(`
+                                                    <img src="${url}" style="max-width: 150px; border-radius: 80px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                                    <div id="edit-avatar" style="position: absolute; bottom: 5px; right: 5px; background: rgba(0, 0, 0, 0.5); color: white; padding: 8px; border-radius: 50%; cursor: pointer;">
+                                                        <i class="fas fa-camera"></i>
+                                                    </div>
+                                                `);
+
+                                                    document.getElementById('edit-avatar').addEventListener('click', function () {
+                                                        document.getElementById('avatar').click();
+                                                    });
                                                 }, 'image/png');
                                             }
                                         },
@@ -923,7 +1347,6 @@
                             reader.readAsDataURL(file);
                         });
                     }
-
                 });
             });
         });
@@ -953,6 +1376,35 @@
         });
 
     </script>
+
+
+    <script>
+        $(document).ready(function () {
+            $('#regionName-filter').on('change', function () {
+                let regionId = $(this).val();
+                let hotelSelect = $('#hotelName-filter');
+
+                hotelSelect.html('<option value="">Загрузка...</option>');
+
+                if (regionId) {
+                    $.ajax({
+                        url: "{{ route('hotels.by.region') }}",
+                        type: "GET",
+                        data: { region_id: regionId },
+                        success: function (data) {
+                            hotelSelect.html('<option value="">Выберите отель</option>');
+                            $.each(data, function (key, hotel) {
+                                hotelSelect.append(`<option value="${hotel.id}">${hotel.name}</option>`);
+                            });
+                        }
+                    });
+                } else {
+                    hotelSelect.html('<option value="">Выберите отель</option>');
+                }
+            });
+        });
+    </script>
+
 
 
 @endsection
@@ -990,13 +1442,19 @@
                                     @endforeach
                                 </select>
 
-                                <select id="hotelName-filter" class="form-control select2" style="width: 240px;">
+                                <select id="hotelName-filter" class="form-control select2" style="width: 240px; display: none;">
                                     <option value="">Выберите отель</option>
                                     @foreach ($hotels as $hotel)
-                                        <option value="{{ $hotel->id }}">{{ $hotel->name }}</option>
+                                        <option value="{{ $hotel->id }}" data-region="{{ $hotel->id_region }}">{{ $hotel->name }}</option>
                                     @endforeach
                                 </select>
 
+                                <select id="status-filter" class="form-control" style="width: 240px;">
+                                    <option value="">Все</option>
+                                    <option value="1">Только Активные</option>
+                                    <option value="0">Только Неактивные</option>
+                                    <option value="deleted">Только Удалённые</option>
+                                </select>
 
                                 <button type="button" class="btn btn-dark" id="search-btn">
                                     <i class="fa fa-search"></i>
@@ -1010,9 +1468,10 @@
                     <div id="custom-loading">
                         <div class="spinner"></div>
                     </div>
-                    <table id="userTable" class="table bg-gradient-info dataTable row-border table-hover table-striped">
+                    <table id="userTable" class="table bg-gradient-info dataTable row-border table-hover">
                     <thead>
                     <tr>
+                        <th></th>
                         <th></th>
                         <th></th>
                         <th></th>
@@ -1037,8 +1496,4 @@
             </div>
         </div>
     </div>
-
-
-
-
 @endsection

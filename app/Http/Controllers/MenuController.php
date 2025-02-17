@@ -167,4 +167,17 @@ class MenuController extends Controller
         return response()->json(['success' => true, 'message' => 'Меню обновлено успешно.']);
     }
 
+    public function deleteMenu(Request $request)
+    {
+        $menuId = $request->input('id');
+        $menu = DB::table('tb_menu')->where('menu_id', $menuId);
+
+        if ($menu) {
+            $menu->delete();
+            return response()->json(['success' => true]);
+        }
+
+        return response()->json(['success' => false]);
+    }
+
 }

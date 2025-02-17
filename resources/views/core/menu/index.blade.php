@@ -173,8 +173,8 @@
             border-left: 3px solid #007bff;
         }
 
-        .subchild-menu-level .menu-item i {
-            color: #28a745; /* Зеленый цвет для иконки subchild */
+        .subchild-icon  {
+            color: #28a745;
         }
 
         /* Кнопки */
@@ -207,6 +207,7 @@
     </style>
 
     <style>
+
         /* Кастомные стили для радио-кнопок */
         .custom-radio .form-check-input {
             width: 20px;
@@ -632,7 +633,6 @@
         });
     </script>
 
-
     <script>
         document.getElementById('menu_icons').addEventListener('input', function() {
             var iconPreview = document.getElementById('menu-icon-preview');
@@ -696,6 +696,21 @@
         $('#createMenuForm').submit(function(e) {
             e.preventDefault();
 
+            let menuNameRu = $('input[name="menu_name_ru"]').val();
+            let menuNameUz = $('input[name="menu_name_uz"]').val();
+            let menuNameEn = $('input[name="menu_name_en"]').val();
+            console.log(menuNameRu, menuNameUz, menuNameEn)
+
+            if (!menuNameRu || !menuNameUz || !menuNameEn) {
+                Swal.fire({
+                    title: 'Ошибка!',
+                    text: 'Заполните все поле названия меню!',
+                    icon: 'warning',
+                    showConfirmButton: true,
+                });
+                return;
+            }
+
             $.ajax({
                 url: '{{ route("menu.store") }}',
                 type: 'POST',
@@ -726,6 +741,63 @@
             });
         });
     </script>
+
+    <script>
+        $(document).on('click', '.delete-menu', function() {
+            var menuId = $(this).data('id');
+
+            Swal.fire({
+                title: 'Вы уверены?',
+                text: "Вы не сможете отменить это действие!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Да, удалить!',
+                cancelButtonText: 'Отмена'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: '{{route('menu.deleteMenu')}}',
+                        type: 'DELETE',
+                        data: {
+                            id: menuId,
+                            _token: '{{ csrf_token() }}'
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                Swal.fire({
+                                    title: 'Удалено!',
+                                    text: 'Элемент успешно удален.',
+                                    icon: 'success',
+                                    showConfirmButton: false,
+                                    timer: 2500
+                                }).then(() => {
+                                    $('li[data-id="' + menuId + '"]').remove();
+                                });
+                            } else {
+                                Swal.fire({
+                                    title: 'Ошибка!',
+                                    text: 'Не удалось удалить элемент.',
+                                    icon: 'error',
+                                    showConfirmButton: false,
+                                    timer: 2500
+                                });
+                            }
+                        },
+                        error: function() {
+                            Swal.fire({
+                                title: 'Ошибка!',
+                                text: 'Произошла ошибка при удалении элемента.',
+                                icon: 'error',
+                                confirmButtonText: 'ОК'
+                            });
+                        }
+                    });
+                }
+            });
+        });
+    </script>
 @endsection
 
 @section('content')
@@ -741,11 +813,14 @@
                                 $menuNameRu = $menuLang['ru'] ?? '';
                             @endphp
                             <li data-id="{{ $menu->menu_id }}" data-type="{{ $menu->menu_type }}" class="menu-level">
-                                <div class="menu-item d-flex align-items-center justify-content-start">
-                                    <i class="{{ $menu->menu_icons }}"></i>
+                                <div class="menu-item d-flex align-items-center justify-content-start @if($menu->active) inactive @endif">
+                                    <i class="{{ $menu->menu_icons }} @if(!$menu->active) text-danger @endif"></i>
                                     <span>{{ $menuNameRu }}</span>
-                                    <button class="btn btn-sm btn-danger-dark edit-menu" data-id="{{ $menu->menu_id }}" data-name="{{ $menuNameRu }}">
+                                    <button class="btn btn-sm btn-warning edit-menu" data-id="{{ $menu->menu_id }}" data-name="{{ $menuNameRu }}">
                                         <i class="fa fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-danger delete-menu" data-id="{{ $menu->menu_id }}">
+                                        <i class="fa fa-trash"></i>
                                     </button>
                                 </div>
                                 @if (count($menu->children))
@@ -756,12 +831,17 @@
                                                 $childNameRu = $childLang['ru'] ?? '';
                                             @endphp
                                             <li data-id="{{ $child->menu_id }}" data-type="{{ $child->menu_type }}" class="child-menu-level">
-                                                <div class="menu-item d-flex justify-content-between align-items-start">
-                                                    <i class="{{ $child->menu_icons }} child-icon"></i>
+                                                <div class="menu-item d-flex justify-content-between align-items-start @if($child->active) inactive @endif">
+                                                    <i class="{{ $child->menu_icons }} text-info @if(!$child->active) text-danger @endif"></i>
                                                     <span>{{ $childNameRu }}</span>
-                                                    <button class="btn btn-sm btn-danger-dark edit-menu" data-id="{{ $child->menu_id }}" data-name="{{ $childNameRu }}">
-                                                        <i class="fa fa-edit"></i>
-                                                    </button>
+                                                    <div>
+                                                        <button class="btn btn-sm btn-warning edit-menu" data-id="{{ $child->menu_id }}" data-name="{{ $childNameRu }}">
+                                                            <i class="fa fa-edit"></i>
+                                                        </button>
+                                                        <button class="btn btn-sm btn-danger delete-menu" data-id="{{ $child->menu_id }}">
+                                                            <i class="fa fa-trash"></i>
+                                                        </button>
+                                                    </div>
                                                 </div>
                                                 @if (count($child->children))
                                                     <ul>
@@ -771,12 +851,17 @@
                                                                 $subChildNameRu = $subChildLang['ru'] ?? '';
                                                             @endphp
                                                             <li data-id="{{ $subChild->menu_id }}" data-type="{{ $subChild->menu_type }}" class="subchild-menu-level">
-                                                                <div class="menu-item d-flex justify-content-between align-items-start">
-                                                                    <i class="{{ $subChild->menu_icons }}"></i>
+                                                                <div class="menu-item d-flex justify-content-between align-items-start @if($subChild->active) inactive @endif">
+                                                                    <i class="{{ $subChild->menu_icons }} text-success @if(!$subChild->active) text-danger @endif"></i>
                                                                     <span>{{ $subChildNameRu }}</span>
-                                                                    <button class="btn btn-sm btn-danger-dark edit-menu" data-id="{{ $subChild->menu_id }}" data-name="{{ $subChildNameRu }}">
-                                                                        <i class="fa fa-edit"></i>
-                                                                    </button>
+                                                                    <div>
+                                                                        <button class="btn btn-sm btn-warning edit-menu" data-id="{{ $subChild->menu_id }}" data-name="{{ $subChildNameRu }}">
+                                                                            <i class="fa fa-edit"></i>
+                                                                        </button>
+                                                                        <button class="btn btn-sm btn-danger delete-menu" data-id="{{ $subChild->menu_id }}">
+                                                                            <i class="fa fa-trash"></i>
+                                                                        </button>
+                                                                    </div>
                                                                 </div>
                                                             </li>
                                                         @endforeach
@@ -790,6 +875,7 @@
                         @endforeach
                     </ul>
                 </div>
+
                 <button id="saveMenuOrder" class="btn btn-success mt-3">Сохранить порядок</button>
             </div>
             <div class="col-md-6">
@@ -812,13 +898,13 @@
                         </ul>
                         <div class="tab-content mt-2">
                             <div class="tab-pane fade show active" id="ru">
-                                <input type="text" class="form-control" name="menu_name_ru" required placeholder="Название на русском">
+                                <input type="text" class="form-control" name="menu_name_ru" placeholder="Название на русском">
                             </div>
                             <div class="tab-pane fade" id="uz">
-                                <input type="text" class="form-control" name="menu_name_uz" required placeholder="Название на узбекском">
+                                <input type="text" class="form-control" name="menu_name_uz" placeholder="Название на узбекском">
                             </div>
                             <div class="tab-pane fade" id="en">
-                                <input type="text" class="form-control" name="menu_name_en" required placeholder="Название на английском">
+                                <input type="text" class="form-control" name="menu_name_en" placeholder="Название на английском">
                             </div>
                         </div>
                     </div>
@@ -880,14 +966,9 @@
                             </div>
                         </div>
                     </div>
-
                     <button type="submit" class="btn btn-success mt-3">Создать</button>
                 </form>
             </div>
         </div>
     </div>
 @endsection
-
-
-
-

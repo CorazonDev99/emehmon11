@@ -162,7 +162,6 @@
                         $('#lastname').val(data.person.lastname);
                         $('#firstname').val(data.person.firstname);
                         $('#surname').val(data.person.surname);
-                        // $('#datevisiton').val(data.person.last_checkin.reg_date);
                         $('#visa-info').hide();
 
                         if (data.person.last_checkin.direction_country !== 173) {
@@ -211,6 +210,10 @@
                             icon: 'success',
                             title: data.message,
                             text: 'Информация о госте успешно загружена.',
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 2000,
+                            toast: true,
                         });
                     } else {
                         $('#checking').val('0');
@@ -496,9 +499,9 @@
             }
 
             const dateInputs = [
-                { inputId: "input-date1", errorMessageId: "error-message-date1", minYearSpanId: "min-year1", maxYearSpanId: "max-year1", minAge: 0, maxAge: 120 },
-                { inputId: "input-date2", errorMessageId: "error-message-date2", minYearSpanId: "min-year2", maxYearSpanId: "max-year2", minAge: 0, maxAge: 120 },
-                { inputId: "input-date3", errorMessageId: "error-message-date3", minYearSpanId: "min-year3", maxYearSpanId: "max-year3", minAge: 0, maxAge: 120 },
+                { inputId: "input-date1", errorMessageId: "error-message-date1", minYearSpanId: "min-year1", maxYearSpanId: "max-year1", minAge: 0, maxAge: 150 },
+                { inputId: "input-date2", errorMessageId: "error-message-date2", minYearSpanId: "min-year2", maxYearSpanId: "max-year2", minAge: 0, maxAge: 150 },
+                { inputId: "input-date3", errorMessageId: "error-message-date3", minYearSpanId: "min-year3", maxYearSpanId: "max-year3", minAge: 0, maxAge: 150 },
                 { inputId: "input-date4", errorMessageId: "error-message-date4", minYearSpanId: "min-year4", maxYearSpanId: "max-year4", minAge: 0, maxAge: 16 }
             ];
 
@@ -622,7 +625,7 @@
                 if (repeaterList.querySelectorAll("[data-repeater-item]").length < maxItems) {
                     setTimeout(() => {
                         updateButtonState();
-                        applyNameValidation(); // Применяем валидацию к новым элементам
+                        applyNameValidation();
                     }, 50);
                 }
             });
@@ -647,6 +650,8 @@
 
 
     </script>
+
+
 
 
     @endsection

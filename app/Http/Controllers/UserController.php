@@ -37,10 +37,11 @@ class UserController extends Controller
             ->select('permissions.*', 'model_has_permissions.model_id')
             ->get();
 
-        $hotels = DB::table('tb_hotels')->select(['id', 'name', 'id_region'])->get();
+        $hotels = DB::table('tb_hotels')->select(['id', 'name', 'id_region', 'hotel_type_id'])->get();
         $regions = DB::table('tb_region')->select(['id', 'name'])->get();
+        $mvd = DB::table('visa_organs')->get();
 
-        return view('core.users.index', compact('roles', 'permissions', 'hotels', 'regions', 'userPermissions', 'rolesEdit'));
+        return view('core.users.index', compact('mvd','roles', 'permissions', 'hotels', 'regions', 'userPermissions', 'rolesEdit'));
     }
 
 
@@ -50,31 +51,44 @@ class UserController extends Controller
             ->leftJoin('model_has_roles', 'model_has_roles.model_id', '=', 'tb_users.id')
             ->leftJoin('roles', 'model_has_roles.role_id', '=', 'roles.id')
             ->leftJoin('tb_hotels', 'tb_hotels.id', '=', 'tb_users.id_hotel')
+            ->leftJoin('visa_organs', 'visa_organs.sticker_code', '=', 'tb_users.mrz_code')
             ->leftJoin('tb_region', 'tb_hotels.id_region', '=', 'tb_region.id')
+            ->leftJoin('tb_users as created_by_user', 'tb_users.created_by', '=', 'created_by_user.id')
             ->select([
                 'tb_users.id as user_id',
                 'roles.id AS role_id',
                 'roles.name AS role_name',
-                'group_id',
-                'id_hotel',
-                'username',
-                'email',
-                'first_name as name',
-                'last_name as last_name',
-                'avatar',
+                'tb_users.group_id',
+                'tb_users.id_hotel',
+                'tb_hotels.id_region',
+                'tb_users.username',
+                'tb_users.email',
+                'visa_organs.code as code',
+                'visa_organs.sticker_name as sticker_name',
+                'visa_organs.mvd_name as mvd_name',
+                'tb_users.mrz_code',
+                'tb_users.first_name as name',
+                'tb_users.last_name as last_name',
+                'tb_users.avatar',
+                'tb_users.active',
+                'tb_users.deleted_at',
                 'tb_hotels.name as hotel_name',
                 'tb_region.name as region_name',
-            ])
-            ->whereNull('deleted_at');
+                DB::raw("DATE_FORMAT(tb_users.last_login, '%d.%m.%Y %H:%i') AS last_login"),
+                DB::raw("DATE_FORMAT(tb_users.created_at, '%d.%m.%Y %H:%i') AS created_at"),
+                DB::raw("DATE_FORMAT(tb_users.updated_at, '%d.%m.%Y %H:%i') AS updated_at"),
+                'created_by_user.first_name as created_by_first_name',
+                'created_by_user.last_name as created_by_last_name' ,
+            ]);
 
         if ($request->filled('name')) {
-            $query->where('first_name', 'like', $request->input('name') . '%');
+            $query->where('tb_users.first_name', 'like', $request->input('name') . '%');
         }
         if ($request->filled('username')) {
-            $query->where('username', 'like', $request->input('username') . '%');
+            $query->where('tb_users.username', 'like', $request->input('username') . '%');
         }
         if ($request->filled('email')) {
-            $query->where('email', 'like', $request->input('email') . '%');
+            $query->where('tb_users.email', 'like', $request->input('email') . '%');
         }
         if ($request->filled('hotel_name')) {
             $query->where('tb_hotels.id', '=', $request->input('hotel_name'));
@@ -82,9 +96,20 @@ class UserController extends Controller
         if ($request->filled('region_name')) {
             $query->where('tb_region.id', '=', $request->input('region_name'));
         }
+        if ($request->filled('status')) {
+            if ($request->input('status') == "deleted") {
+                $query->whereNotNull('tb_users.deleted_at');
+            } else {
+                $query->where('tb_users.active', $request->input('status'))
+                    ->whereNull('tb_users.deleted_at');
+            }
+        }
+
+
 
 
         return DataTables::of($query)
+
             ->editColumn('avatar', function ($row) {
                 if (is_null($row->avatar) || empty($row->avatar)) {
                     return '<i class="fas fa-user" style="font-size: 50px; color:#777;"></i>';
@@ -95,7 +120,7 @@ class UserController extends Controller
                     return '<img src="' . $avatarSrc . '"
                     title="' . $row->avatar . '"
                     width="50px" height="50px"
-                    style="text-shadow: 1px 1px; border:1px solid #777;" />
+                    style="border-radius: 10%; text-shadow: 1px 1px; border:1px solid #777;" />
                 <span style="color:transparent;font-size:1px">' . $row->avatar . '</span>';
                 } else {
                     return '<i class="fas fa-user" style="font-size: 50px; color:#777;"></i>';
@@ -110,24 +135,42 @@ class UserController extends Controller
 
     public function createUser(Request $request)
     {
-        $request->validate([
+        $rules = [
             'username' => 'required|string|max:255|unique:tb_users,username',
             'email' => 'required|email|max:255|unique:tb_users,email',
             'password' => 'required|string|min:8|confirmed',
             'role_id' => 'required|integer|exists:roles,id',
-        ], [
+        ];
+
+        $messages = [
             'username.unique' => 'Пользователь с таким username уже существует.',
             'email.unique' => 'Пользователь с таким email уже зарегистрирован.',
             'password.min' => 'Пароль должен содержать минимум 8 символов.',
             'password.confirmed' => 'Пароли не совпадают.',
             'role_id.required' => 'Необходимо выбрать роль.',
             'role_id.exists' => 'Выбранная роль не существует.',
-        ]);
+        ];
 
-        $authUser = Auth::user();
-        $groupId = $authUser->group_id;
-        $hotelId = $authUser->id_hotel;
+        if ($request->has('permissions')) {
+            $permissions = json_decode($request->permissions, true);
+
+            if (is_array($permissions)) {
+                $visaPrintAccessPermission = DB::table('permissions')
+                    ->where('name', 'VISA_PRINT_ACCESS')
+                    ->first();
+
+                if ($visaPrintAccessPermission && in_array($visaPrintAccessPermission->id, $permissions)) {
+                    $rules['mrz_code'] = 'required|string|max:50';
+                    $messages['mrz_code.required'] = 'Необходимо выбрать MVD_VISA_CODE.';
+                }
+            }
+        }
+
+        $request->validate($rules, $messages);
+
+        $hotelId = $request->id_hotel;
         $roleId = $request->role_id;
+        $mrzCode = $request->mrz_code;
 
         $avatarPath = null;
         if ($request->hasFile('avatar')) {
@@ -141,7 +184,6 @@ class UserController extends Controller
         $hashedPassword = Hash::make($request->password);
 
         $userId = DB::table('tb_users')->insertGetId([
-            'group_id' => $groupId,
             'id_hotel' => $hotelId,
             'first_name' => $request->first_name,
             'last_name' => $request->last_name,
@@ -149,6 +191,7 @@ class UserController extends Controller
             'email' => $request->email,
             'password' => $hashedPassword,
             'avatar' => $avatarPath,
+            'mrz_code' => $mrzCode,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -188,7 +231,7 @@ class UserController extends Controller
         try {
             $deleted = DB::table('tb_users')
                 ->where('id', $id)
-                ->update(['deleted_at' => Carbon::now()]);
+                ->update(['deleted_at' => Carbon::now(), 'active' => 0]);
 
             if ($deleted) {
                 DB::table('model_has_roles')->where('model_id', $id)->delete();
@@ -216,10 +259,7 @@ class UserController extends Controller
 
     public function editUser(Request $request)
     {
-
         try {
-
-
             $userId = $request->input('user_id');
             $firstName = $request->input('first_name');
             $lastName = $request->input('last_name');
@@ -229,7 +269,29 @@ class UserController extends Controller
             $confirmPassword = $request->input('password_confirmation');
             $roleId = $request->input('role_id');
             $avatar = $request->file('avatar');
+            $hotelId = $request->input('id_hotel');
+            $mrzCode = $request->input('mrz_code');
+            $createdBy = auth()->user()->id;
             $permissions = json_decode($request->input('permissions'), true);
+
+            if ($request->has('permissions')) {
+                $permissions = json_decode($request->input('permissions'), true);
+
+                if (is_array($permissions)) {
+                    $visaPrintAccessPermission = DB::table('permissions')
+                        ->where('name', 'VISA_PRINT_ACCESS')
+                        ->first();
+
+                    if ($visaPrintAccessPermission && in_array($visaPrintAccessPermission->id, $permissions)) {
+                        if (empty($mrzCode)) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => 'Необходимо выбрать MVD_VISA_CODE.',
+                            ], 422);
+                        }
+                    }
+                }
+            }
 
             if ($password && strlen($password) < 8) {
                 return response()->json([
@@ -237,18 +299,19 @@ class UserController extends Controller
                     'message' => 'Пароль должен содержать минимум 8 символов',
                 ], 422);
             }
+
             if (empty($userId) || empty($firstName) || empty($lastName) || empty($username) || empty($email) || empty($roleId)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Все обязательные поля должны быть заполнены.'
-                ]);
+                ], 422);
             }
 
             if ($password && $password !== $confirmPassword) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Пароль и подтверждение пароля не совпадают.'
-                ]);
+                ], 422);
             }
 
             $avatarPath = null;
@@ -267,8 +330,12 @@ class UserController extends Controller
                     'last_name' => $lastName,
                     'username' => $username,
                     'email' => $email,
+                    'created_by' => $createdBy,
+                    'id_hotel' => $hotelId,
+                    'mrz_code' => $mrzCode,
                     'avatar' => $avatarPath ? $avatarPath : DB::raw('avatar'),
                     'password' => $password ? bcrypt($password) : DB::raw('password'),
+                    'updated_at' => now(),
                 ]);
 
             $exists_role = DB::table('model_has_roles')
@@ -312,10 +379,19 @@ class UserController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Произошла ошибка при обновлении данных: ' . $e->getMessage()
-            ]);
+            ], 500);
         }
     }
 
+    public function getHotelsByRegion(Request $request)
+    {
+        $regionId = $request->input('region_id');
+        $hotels = DB::table('tb_hotels')
+            ->where('id_region', $regionId)
+            ->select(['id', 'name'])
+            ->get();
 
+        return response()->json($hotels);
+    }
 
 }

@@ -608,11 +608,16 @@
     {{-- Swal.fire Сохранено! --}}
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            @if (session('success'))
-                Swal.fire('Сохранено!', '{{ session('success') }}', 'success');
+            @php
+                $successMessage = session()->pull('success');
+            @endphp
+
+            @if (!empty($successMessage))
+            Swal.fire('Сохранено!', '{{ $successMessage }}', 'success');
             @endif
         });
     </script>
+
 
     {{-- Checkout --}}
     <script>

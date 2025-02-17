@@ -4,17 +4,36 @@
     <script>
         function confirmDelete(roleId) {
             Swal.fire({
-                title: 'Are you sure?',
-                text: "You won't be able to revert this!",
+                title: 'Вы уверены?',
+                text: "Вы не сможете отменить это действие!",
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#d33',
                 cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Yes, delete it!',
-                cancelButtonText: 'Cancel'
+                confirmButtonText: 'Да, удалить!',
+                cancelButtonText: 'Нет'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    document.getElementById(`delete-form-${roleId}`).submit();
+                    fetch(`/roles/${roleId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                Swal.fire('Deleted!', data.message, 'success').then(() => {
+                                    window.location.reload();
+                                });
+                            } else {
+                                Swal.fire('Error!', data.message, 'warning');
+                            }
+                        })
+                        .catch(error => {
+                            Swal.fire('Error!', 'Something went wrong.', 'error');
+                        });
                 }
             });
         }
