@@ -2246,10 +2246,10 @@
                             <table class="table dataTable row-border compact table-hover">
                                 <thead>
                                     <tr class="text-center">
+                                        <th>Дата</th>
                                         <th>Тип события</th>
                                         <th>Гостиница</th>
                                         <th>Администратор</th>
-                                        <th>Дата</th>
                                         <th>Изменения</th>
                                     </tr>
                                 </thead>
@@ -2277,10 +2277,10 @@
                                     var rows = response.data.map(function(log) {
                                         return `
                                             <tr class="text-center">
+                                                <td>${log.event_time}</td>
                                                 <td>${log.event_type}</td>
                                                 <td>${log.hotel_name}</td>
                                                 <td>${log.user_name}</td>
-                                                <td>${log.event_time}</td>
                                                 <td>${log.changes}</td>
                                             </tr>
                                         `;
@@ -2293,7 +2293,7 @@
                                 }
                             },
                             error: function(xhr, status, error) {
-                                console.error('Ошибка при загрузке данных:', error); // Отладка
+                                console.error('Ошибка при загрузке данных:', error);
                                 $('#audit tbody').html('<tr><td colspan="7" class="text-center text-danger">Ошибка загрузки данных!</td></tr>');
                                 $('a[href="#audit"] .badge').text(0);
                             }
@@ -2791,7 +2791,7 @@
                         <div id="custom-loading">
                             <div class="spinner"></div>
                         </div>
-                        <table class="table bg-gradient-info dataTable row-border table-hover" id="listok-table" style="width: 100%">
+                        <table class="table dataTable row-border table-hover" id="listok-table" style="width: 100%">
                             <thead>
                                 <tr>
                                     <th></th>

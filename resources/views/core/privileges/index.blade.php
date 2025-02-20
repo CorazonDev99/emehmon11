@@ -538,7 +538,7 @@
 
     <div class="container mt-4">
         <div class="card shadow-sm">
-            <div class="card-header d-flex justify-content-between align-items-center bg-gradient-info">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <h2 class="mb-0 d-flex align-items-center">
                     <i class="fas fa-key me-2"></i> Modules
                 </h2>
@@ -549,7 +549,7 @@
             <div class="card-body">
 
                     <table id="modulesTable" class="table dataTable row-border table-hover">
-                        <thead class="bg-gradient-info">
+                        <thead>
                         <tr>
                             <th></th>
                             <th class="non_searchable"></th>

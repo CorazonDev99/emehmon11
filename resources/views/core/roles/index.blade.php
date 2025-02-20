@@ -43,7 +43,7 @@
 @section('content')
     <div class="container mt-4">
         <div class="card shadow-lg">
-            <div class="card-header d-flex justify-content-between align-items-center bg-gradient-info text-white">
+            <div class="card-header d-flex justify-content-between align-items-center text-white">
                 <h2 class="mb-0 d-flex align-items-center">
                     <i class="fas fa-users-cog me-2"></i>Roles
                 </h2>
@@ -60,7 +60,7 @@
                 @endif
 
                 <table class="table dataTable row-border table-hover table-striped">
-                    <thead class="bg-gradient-info">
+                    <thead>
                     <tr>
                         <th><i class="fas fa-cogs me-2"></i>Role Name</th>
                         <th scope="col" width="30%"><i class="fas fa-shield-alt me-2"></i>Guard</th>

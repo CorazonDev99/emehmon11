@@ -12,16 +12,13 @@ class AuditEvent
 {
     public static function add($event_type, $entity_id, $entity_type, $changes = [])
     {
-        $clickhouse = app(ClickHouseService::class)->getClient();
 
-        // Получаем данные пользователя и отеля
+        $clickhouse = app(ClickHouseService::class)->getClient();
         $user = self::getUserData();
         $hotel = self::getHotelData($user['id_hotel'] ?? null);
 
-        // Обрабатываем изменения
         $processedChanges = self::processChanges($changes);
 
-        // Формируем данные для аудита
         $audit = [
             'event_type' => $event_type,
             'hotel_id' => (int)($hotel['id'] ?? 0),
@@ -35,7 +32,6 @@ class AuditEvent
             'changes' => json_encode($processedChanges, JSON_UNESCAPED_UNICODE),
         ];
 
-        // Вставляем данные в ClickHouse
         try {
             $query = "
                 INSERT INTO audit_events (
@@ -117,24 +113,24 @@ class AuditEvent
      */
     private static function processChanges(array $changes): array
     {
+        if (isset($changes['old']) && isset($changes['new'])) {
+            return $changes;
+        }
+
         $old = [];
         $new = [];
 
-        if (isset($changes['new']) && is_array($changes['new'])) {
-            foreach ($changes['new'] as $key => $value) {
-                if (isset($changes['old'][$key]) && $changes['old'][$key] != $value) {
-                    $old[$key] = $changes['old'][$key];
-                    $new[$key] = $value;
-                } else {
-                    $new[$key] = $value;
-                }
+        foreach ($changes as $key => $value) {
+            if (strpos($key, 'old_') === 0) {
+                $newKey = substr($key, 4);
+                $old[$newKey] = $value;
+            } elseif (strpos($key, 'new_') === 0) {
+                $newKey = substr($key, 4);
+                $new[$newKey] = $value;
             }
-        } else {
-            $old = $changes['old'] ?? [];
         }
 
         return ['old' => $old, 'new' => $new];
     }
+
 }
-
-

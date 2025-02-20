@@ -378,6 +378,11 @@
                                 <i class="bi bi-lock"></i> Permissions
                             </a>
                         </li>
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link" id="audit-tab" data-bs-toggle="tab" href="#audit" role="tab" aria-controls="audit" aria-selected="false">
+                                <i class="bi bi-clipboard-check"></i> Audit
+                            </a>
+                        </li>
                     </ul>
                     <div class="tab-content" id="userTabsContent">
                         <div class="tab-pane fade show active" id="profile" role="tabpanel" aria-labelledby="profile-tab">
@@ -449,27 +454,26 @@
                                     </table>
                                 </div>
                             </div>
-
                         </div>
 
-                  <div class="tab-pane fade" id="roles" role="tabpanel" aria-labelledby="roles-tab">
-                    <div class="row">
-                        <div class="col-xs-12 col-sm-12 col-md-12">
-                            <div class="form-group">
-                                <strong>Role:</strong>
-                                <ul class="list-group mt-2">
-                                    ${
-                                    rowData.role_name
-                                        ? `<li class="list-group-item d-flex align-items-center">
-                                                <span class="checkmark"></span> ${rowData.role_name}
-                                               </li>`
-                                        : '<li class="list-group-item">No role assigned</li>'
-                                }
-                                </ul>
+                        <div class="tab-pane fade" id="roles" role="tabpanel" aria-labelledby="roles-tab">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-12 col-md-12">
+                                    <div class="form-group">
+                                        <strong>Role:</strong>
+                                        <ul class="list-group mt-2">
+                                            ${
+                    rowData.role_name
+                        ? `<li class="list-group-item d-flex align-items-center">
+                                                        <span class="checkmark"></span> ${rowData.role_name}
+                                                       </li>`
+                        : '<li class="list-group-item">No role assigned</li>'
+                }
+                                        </ul>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    </div>
 
                         <div class="tab-pane fade" id="permissions" role="tabpanel" aria-labelledby="permissions-tab">
                             <div class="row">
@@ -478,22 +482,38 @@
                                         <strong>Permissions:</strong>
                                         <ul class="list-group mt-2">
                                            ${
-                                            Array.isArray(userPermissions) && userPermissions.length > 0
-                                                ? userPermissions
-                                                    .filter(permission => permission.model_id === rowData.user_id)
-                                                    .map(permission =>
-                                                        `<li class="list-group-item d-flex align-items-center">
+                    Array.isArray(userPermissions) && userPermissions.length > 0
+                        ? userPermissions
+                            .filter(permission => permission.model_id === rowData.user_id)
+                            .map(permission =>
+                                `<li class="list-group-item d-flex align-items-center">
                                                                 <span class="checkmark"></span> ${permission.name}
                                                             </li>`
-                                                    ).join('')
-                                                : '<li class="list-group-item">No permissions assigned</li>'
-                                        }
+                            ).join('')
+                        : '<li class="list-group-item">No permissions assigned</li>'
+                }
                                         </ul>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
+                        <div class="tab-pane fade" id="audit" role="tabpanel" aria-labelledby="audit-tab">
+                            <table class="table dataTable row-border compact table-hover">
+                                <thead>
+                                    <tr class="text-center">
+                                        <th>Дата</th>
+                                        <th>Тип события</th>
+                                        <th>Гостиница</th>
+                                        <th>Администратор</th>
+                                        <th>Изменения</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td colspan="7" class="text-center">Загрузка...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -505,7 +525,42 @@
                     boxWidth: '900px',
                     useBootstrap: false,
                     content: content,
-                    buttons: false
+                    buttons: false,
+                    onContentReady: function() {
+                        $.ajax({
+                            url: '{{ route("users.getAuditLogs") }}',
+                            method: 'GET',
+                            data: {
+                                entity_id: rowData.user_id, // Исправить на правильное поле
+                                _token: $('meta[name="csrf-token"]').attr('content')
+                            },
+                            success: function(response) {
+                                if (response.success && response.data.length > 0) {
+                                    var rows = response.data.map(function(log) {
+                                        return `
+                                <tr class="text-center">
+                                    <td>${log.event_time}</td>
+                                    <td>${log.event_type}</td>
+                                    <td>${log.hotel_name}</td>
+                                    <td>${log.user_name}</td>
+                                    <td class="text-left">${log.changes.replace(/\n/g, '<br>')}</td>
+                                </tr>
+                            `;
+                                    }).join('');
+                                    $('#audit tbody').html(rows);
+                                    $('a[href="#audit"] .badge').text(response.count);
+                                } else {
+                                    $('#audit tbody').html('<tr><td colspan="7" class="text-center">Нет данных!</td></tr>');
+                                    $('a[href="#audit"] .badge').text(0);
+                                }
+                            },
+                            error: function(xhr, status, error) {
+                                console.error('Ошибка при загрузке данных:', error);
+                                $('#audit tbody').html('<tr><td colspan="7" class="text-center text-danger">Ошибка загрузки данных!</td></tr>');
+                                $('a[href="#audit"] .badge').text(0);
+                            }
+                        });
+                    }
                 });
             });
 
@@ -1388,7 +1443,7 @@
 
                 if (regionId) {
                     $.ajax({
-                        url: "{{ route('hotels.by.region') }}",
+                        url: "{{ route('users.getHotelsByRegion') }}",
                         type: "GET",
                         data: { region_id: regionId },
                         success: function (data) {
@@ -1468,7 +1523,7 @@
                     <div id="custom-loading">
                         <div class="spinner"></div>
                     </div>
-                    <table id="userTable" class="table bg-gradient-info dataTable row-border table-hover">
+                    <table id="userTable" class="table dataTable row-border table-hover">
                     <thead>
                     <tr>
                         <th></th>

@@ -24,7 +24,7 @@
 @section('content')
     <div class="container mt-4">
         <div class="card shadow-sm">
-            <div class="card-header d-flex justify-content-between align-items-center bg-gradient-info">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <h2 class="mb-0 d-flex align-items-center">
                     <i class="fas fa-key me-2"></i> Permissions
                 </h2>
@@ -44,7 +44,7 @@
                     </div>
                 @else
                     <table class="table dataTable row-border table-hover table-striped">
-                        <thead class="bg-gradient-info">
+                        <thead>
                         <tr>
                             <th scope="col" width="50%"><i class="fas fa-user me-2"></i>Name</th>
                             <th scope="col" width="30%"><i class="fas fa-shield-alt me-2"></i>Guard</th>

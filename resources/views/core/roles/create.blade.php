@@ -354,7 +354,7 @@
 @section('content')
     <div class="container mt-4">
         <div class="card shadow-sm">
-            <div class="card-header d-flex justify-content-between align-items-center bg-primary text-white">
+            <div class="card-header d-flex justify-content-between align-items-center text-white">
                 <h2 class="mb-0">
                     <i class="fas fa-user-shield me-2"></i>Create Role
                 </h2>
@@ -405,7 +405,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                     </div>
                     <div class="mb-4">
                         <label class="form-label"><strong>Setting access privileges:</strong></label>

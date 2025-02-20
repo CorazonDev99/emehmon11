@@ -1,10 +1,11 @@
 <?php
 
 namespace App\Http\Controllers;
+use App\Services\ClickHouseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Auth;
+use App\Services\AuditEvent;
 use Yajra\DataTables\DataTables;
 use Carbon\Carbon;
 
@@ -183,7 +184,7 @@ class UserController extends Controller
 
         $hashedPassword = Hash::make($request->password);
 
-        $userId = DB::table('tb_users')->insertGetId([
+        $userData = [
             'id_hotel' => $hotelId,
             'first_name' => $request->first_name,
             'last_name' => $request->last_name,
@@ -194,7 +195,9 @@ class UserController extends Controller
             'mrz_code' => $mrzCode,
             'created_at' => now(),
             'updated_at' => now(),
-        ]);
+        ];
+
+        $userId = DB::table('tb_users')->insertGetId($userData);
 
         DB::table('model_has_roles')->insert([
             'role_id' => $roleId,
@@ -215,6 +218,17 @@ class UserController extends Controller
             }
         }
 
+        // Запись аудита о создании пользователя
+        AuditEvent::add(
+            'Создание пользователя',
+            $userId,
+            'tb_users',
+            [
+                'old' => [],
+                'new' => array_merge($userData, ['id' => $userId]),
+            ]
+        );
+
         return response()->json([
             'success' => true,
             'message' => 'Пользователь успешно создан',
@@ -224,16 +238,48 @@ class UserController extends Controller
 
 
 
+
     public function deleteUser(Request $request)
     {
         $id = $request->get("id");
 
         try {
-            $deleted = DB::table('tb_users')
-                ->where('id', $id)
-                ->update(['deleted_at' => Carbon::now(), 'active' => 0]);
+            $user = DB::table('tb_users')->where('id', $id)->first();
 
-            if ($deleted) {
+            if ($user) {
+                $updateData = [
+                    'deleted_at' => Carbon::now(),
+                    'active' => 0
+                ];
+
+                // Формируем массив изменений в формате 'old' и 'new'
+                $changes = ['old' => [], 'new' => []];
+
+                foreach ($updateData as $key => $newValue) {
+                    $oldValue = $user->$key ?? null;
+                    if ($oldValue != $newValue) {
+                        $changes['old'][$key] = $oldValue;
+                        $changes['new'][$key] = $newValue;
+                    }
+                }
+
+                // Добавляем доп. данные в "old"
+                $changes['old'] += [
+                    'username'   => $user->username,
+                    'email'      => $user->email,
+                    'first_name' => $user->first_name,
+                    'last_name'  => $user->last_name,
+                    'id_hotel'   => $user->id_hotel,
+                ];
+
+                if (!empty($changes['new'])) {
+                    DB::table('tb_users')->where('id', $id)->update($updateData);
+
+                    // Логируем аудит
+                    AuditEvent::add('Удаление пользователя', $id, 'tb_users', $changes);
+                }
+
+                // Удаляем записи из связанных таблиц
                 DB::table('model_has_roles')->where('model_id', $id)->delete();
                 DB::table('model_has_permissions')->where('model_id', $id)->delete();
 
@@ -241,12 +287,12 @@ class UserController extends Controller
                     'success' => true,
                     'message' => __('User deleted successfully.')
                 ]);
-            } else {
-                return response()->json([
-                    'success' => false,
-                    'message' => __('User not found.')
-                ], 404);
             }
+
+            return response()->json([
+                'success' => false,
+                'message' => __('User not found.')
+            ], 404);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -255,6 +301,7 @@ class UserController extends Controller
             ], 500);
         }
     }
+
 
 
     public function editUser(Request $request)
@@ -273,25 +320,6 @@ class UserController extends Controller
             $mrzCode = $request->input('mrz_code');
             $createdBy = auth()->user()->id;
             $permissions = json_decode($request->input('permissions'), true);
-
-            if ($request->has('permissions')) {
-                $permissions = json_decode($request->input('permissions'), true);
-
-                if (is_array($permissions)) {
-                    $visaPrintAccessPermission = DB::table('permissions')
-                        ->where('name', 'VISA_PRINT_ACCESS')
-                        ->first();
-
-                    if ($visaPrintAccessPermission && in_array($visaPrintAccessPermission->id, $permissions)) {
-                        if (empty($mrzCode)) {
-                            return response()->json([
-                                'success' => false,
-                                'message' => 'Необходимо выбрать MVD_VISA_CODE.',
-                            ], 422);
-                        }
-                    }
-                }
-            }
 
             if ($password && strlen($password) < 8) {
                 return response()->json([
@@ -314,59 +342,87 @@ class UserController extends Controller
                 ], 422);
             }
 
-            $avatarPath = null;
+            $oldUser = DB::table('tb_users')->where('id', $userId)->first();
+            if (!$oldUser) {
+                return response()->json(['success' => false, 'message' => 'Пользователь не найден.'], 404);
+            }
+
+            $avatarPath = $oldUser->avatar;
             if ($avatar) {
-                $avatar = $request->file('avatar');
                 $avatarDirectory = 'assets/images/users/';
                 $avatarName = time() . '_' . $avatar->getClientOriginalName();
                 $avatar->move(public_path($avatarDirectory), $avatarName);
                 $avatarPath = $avatarName;
             }
 
-            DB::table('tb_users')
-                ->where('id', $userId)
-                ->update([
-                    'first_name' => $firstName,
-                    'last_name' => $lastName,
-                    'username' => $username,
-                    'email' => $email,
-                    'created_by' => $createdBy,
-                    'id_hotel' => $hotelId,
-                    'mrz_code' => $mrzCode,
-                    'avatar' => $avatarPath ? $avatarPath : DB::raw('avatar'),
-                    'password' => $password ? bcrypt($password) : DB::raw('password'),
-                    'updated_at' => now(),
+            $updateData = [
+                'first_name' => $firstName,
+                'last_name' => $lastName,
+                'username' => $username,
+                'email' => $email,
+                'created_by' => $createdBy,
+                'id_hotel' => $hotelId,
+                'mrz_code' => $mrzCode,
+                'avatar' => $avatarPath,
+                'password' => $password ? bcrypt($password) : $oldUser->password,
+            ];
+
+            $changes = [];
+            foreach ($updateData as $key => $newValue) {
+                $oldValue = $oldUser->$key ?? null;
+                if ($oldValue != $newValue) {
+                    $changes["old_$key"] = $oldValue;
+                    $changes["new_$key"] = $newValue;
+                }
+            }
+
+            if (!empty($changes)) {
+                DB::table('tb_users')->where('id', $userId)->update($updateData);
+                AuditEvent::add('update_user', $userId, 'user', $changes);
+            }
+
+            // 🔹 Оптимизированная проверка роли
+            $oldRole = DB::table('model_has_roles')->where('model_id', $userId)->first();
+            if (!$oldRole || $oldRole->role_id != $roleId) {
+                AuditEvent::add('update_user_role', $userId, 'user', [
+                    'old_role_id' => $oldRole->role_id ?? null,
+                    'new_role_id' => $roleId,
                 ]);
 
-            $exists_role = DB::table('model_has_roles')
-                ->where('model_id', '=', $userId)
-                ->exists();
-
-            if ($exists_role) {
                 DB::table('model_has_roles')
-                    ->where('model_id', '=', $userId)
-                    ->update(['role_id' => $roleId]);
-            } else {
-                DB::table('model_has_roles')
-                    ->insert([
+                    ->updateOrInsert(['model_id' => $userId], [
                         'role_id' => $roleId,
                         'model_type' => 'App\Models\User',
-                        'model_id' => $userId
                     ]);
             }
 
+            // 🔹 Оптимизированная проверка разрешений
+            $oldPermissions = DB::table('model_has_permissions')
+                ->where('model_id', $userId)
+                ->pluck('permission_id')
+                ->toArray();
+
             if (is_array($permissions)) {
-                DB::table('model_has_permissions')->where('model_id', $userId)->delete();
+                $newPermissions = array_map('intval', $permissions);
+                if ($oldPermissions !== array_reverse($newPermissions)) {
+                    AuditEvent::add('update_user_permissions', $userId, 'user', [
+                        'old_permissions' => $oldPermissions,
+                        'new_permissions' => $newPermissions,
+                    ]);
 
-                foreach ($permissions as $permissionId) {
-                    $permissionId = (int)$permissionId;
-
-                    if ($permissionId > 0) {
-                        DB::table('model_has_permissions')->insert([
-                            'permission_id' => $permissionId,
-                            'model_type' => 'App\Models\User',
-                            'model_id' => $userId,
-                        ]);
+                    DB::table('model_has_permissions')->where('model_id', $userId)->delete();
+                    $insertPermissions = [];
+                    foreach ($newPermissions as $permissionId) {
+                        if ($permissionId > 0) {
+                            $insertPermissions[] = [
+                                'permission_id' => $permissionId,
+                                'model_type' => 'App\Models\User',
+                                'model_id' => $userId,
+                            ];
+                        }
+                    }
+                    if (!empty($insertPermissions)) {
+                        DB::table('model_has_permissions')->insert($insertPermissions);
                     }
                 }
             }
@@ -383,6 +439,7 @@ class UserController extends Controller
         }
     }
 
+
     public function getHotelsByRegion(Request $request)
     {
         $regionId = $request->input('region_id');
@@ -393,5 +450,128 @@ class UserController extends Controller
 
         return response()->json($hotels);
     }
+
+    public function getAuditLogs(Request $request)
+    {
+        $entity_id = $request->input('entity_id');
+        if (!$entity_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Entity ID is required.',
+            ], 400);
+        }
+
+        $clickhouse = app(ClickhouseService::class);
+
+        $query = "
+        SELECT
+            event_type,
+            hotel_name,
+            user_name,
+            entity_id,
+            entity_type,
+            event_time,
+            changes
+        FROM emehmon.audit_events
+        WHERE entity_id = :entity_id
+        ORDER BY event_time DESC
+    ";
+
+        try {
+            $auditLogs = $clickhouse->select($query, ['entity_id' => $entity_id]);
+
+            $formattedLogs = array_map(function ($log) {
+                $log['changes'] = $this->formatChanges($log['changes'], $log['event_type']);
+                $log['event_time'] = Carbon::parse($log['event_time'])->format('d.m.Y H:i');
+                return $log;
+            }, $auditLogs);
+
+            return response()->json([
+                'success' => true,
+                'data' => $formattedLogs,
+                'count' => count($formattedLogs),
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('ClickHouse query error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при выполнении запроса к ClickHouse.',
+            ], 500);
+        }
+    }
+
+
+
+    private function formatChanges(string $changes, string $event_type): string
+    {
+        try {
+            $changesObj = json_decode($changes, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                \Log::error('Ошибка декодирования JSON', [
+                    'changes' => $changes,
+                    'error' => json_last_error_msg()
+                ]);
+                return 'Ошибка при обработке изменений';
+            }
+
+            if (!is_array($changesObj) || empty($changesObj)) {
+                return 'Изменения не указаны';
+            }
+
+            $messages = [];
+
+            if ($event_type === 'Удаление пользователя') {
+                $username = $changesObj['old']['username'] ?? 'Неизвестный пользователь';
+                $email = $changesObj['old']['email'] ?? 'Нет email';
+
+                $messages[] = "Пользователь **{$username}** ({$email}) был удалён.";
+
+                foreach ($changesObj['old'] as $field => $oldValue) {
+                    if (!in_array($field, ['username', 'email'])) {
+                        $messages[] = "Поле **$field**: '$oldValue'";
+                    }
+                }
+            } elseif ($event_type === 'Создание пользователя') {
+                $username = $changesObj['new']['username'] ?? 'Неизвестный пользователь';
+                $email = $changesObj['new']['email'] ?? 'Нет email';
+
+                $messages[] = "Создан новый пользователь **{$username}** ({$email}).";
+
+                foreach ($changesObj['new'] as $field => $newValue) {
+                    if (!in_array($field, ['username', 'email', 'password'])) {
+                        $messages[] = "Поле **$field**: '$newValue'";
+                    }
+                }
+            } else {
+                foreach ($changesObj['old'] as $field => $oldValue) {
+                    $newValue = $changesObj['new'][$field] ?? null;
+
+                    if (is_array($oldValue) && is_array($newValue)) {
+                        $removed = array_diff($oldValue, $newValue);
+                        $added = array_diff($newValue, $oldValue);
+
+                        if (!empty($removed) || !empty($added)) {
+                            $removedText = !empty($removed) ? "Удалены: " . implode(", ", $removed) : "";
+                            $addedText = !empty($added) ? "Добавлены: " . implode(", ", $added) : "";
+                            $messages[] = "Поле **$field** изменилось: $removedText $addedText";
+                        }
+                    } else {
+                        if ($oldValue != $newValue) {
+                            $messages[] = "Поле **$field** изменилось: '$oldValue' → '$newValue'";
+                        }
+                    }
+                }
+            }
+
+            return !empty($messages) ? implode("\n", $messages) : 'Изменения не указаны';
+        } catch (\Exception $e) {
+            \Log::error('Ошибка при обработке изменений: ' . $e->getMessage(), [
+                'changes' => $changes,
+                'event_type' => $event_type,
+            ]);
+            return 'Ошибка при обработке изменений';
+        }
+    }
+
 
 }

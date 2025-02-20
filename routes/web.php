@@ -41,12 +41,10 @@ require __DIR__ . '/auth.php';
 
 Route::auto('users', UserController::class);
 
-Route::get('/hotels-by-region', [UserController::class, 'getHotelsByRegion'])->name('hotels.by.region');
 Route::get('/listok/identify-qr/{id}', [ListokController::class, 'getIdentifyQr']);
 Route::get('/get-hotels-by-region/{regionId}', [ListokController::class, 'getHotelsByRegion']);
 
 Route::group(['middleware' => ['auth']], function () {
-    Route::resource('users', UserController::class);
 
 
     Route::resource('roles', RoleController::class);
@@ -133,9 +131,8 @@ Route::post('add-card', function () {
 //})->middleware('auth');
 
 Route::get('/auth-my', function () {
-    $user = User::find(145);
+    $user = User::find(125);
     Auth::login($user);
-    //    return redirect('test-form');
     return view('dashboard');
 });
 

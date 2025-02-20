@@ -196,6 +196,7 @@
                     <i class="uil-angle-down d-none d-xl-inline-block font-size-15"></i>
                 </button>
                 <div class="dropdown-menu dropdown-menu-end">
+                    @if(\Illuminate\Support\Facades\Auth::user()->hasRole(['Модератор', 'Сисадмины']))
 
                     <a class="dropdown-item" href="/menu">
                         <i class="uil uil-invoice font-size-18 align-middle text-muted me-1"></i>
@@ -219,6 +220,7 @@
                         <i class="uil uil-key-skeleton font-size-18 align-middle text-muted me-1"></i>
                         <span class="align-middle">Permissions</span>
                     </a>
+                    @endif
                     <a class="dropdown-item" href="{{ route('logout') }}"
                        onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
                         <i class="uil uil-sign-out-alt font-size-18 align-middle me-1 text-muted"></i>

@@ -355,7 +355,7 @@
 @section('content')
     <div class="container">
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center bg-primary text-white">
+            <div class="card-header d-flex justify-content-between align-items-center text-white">
                 <h2 class="mb-0">
                     <i class="fas fa-user-shield me-2"></i>Edit Role
                 </h2>

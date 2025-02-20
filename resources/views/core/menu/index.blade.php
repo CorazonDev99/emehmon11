@@ -803,16 +803,16 @@
 @section('content')
     <div class="container">
         <div class="row menu-row">
-            <div class="col-md-6 menu-col">
-                <h2 class="mb-3">Структура меню</h2>
+            <div class="col-md-6 bg-light text-dark menu-col">
+                <h2 class="mb-3 text-dark">Структура меню</h2>
                 <div id="topMenuSection" class="col-md-12">
-                    <ul id="topMenuStructure" class="menu-structure">
+                    <ul id="topMenuStructure" class="menu-structure bg-light text-dark">
                         @foreach ($topMenus as $menu)
                             @php
                                 $menuLang = is_string($menu->menu_lang) ? json_decode($menu->menu_lang, true) : $menu->menu_lang;
                                 $menuNameRu = $menuLang['ru'] ?? '';
                             @endphp
-                            <li data-id="{{ $menu->menu_id }}" data-type="{{ $menu->menu_type }}" class="menu-level">
+                            <li data-id="{{ $menu->menu_id }}" data-type="{{ $menu->menu_type }}" class="menu-level bg-light text-dark">
                                 <div class="menu-item d-flex align-items-center justify-content-start @if($menu->active) inactive @endif">
                                     <i class="{{ $menu->menu_icons }} @if(!$menu->active) text-danger @endif"></i>
                                     <span>{{ $menuNameRu }}</span>
@@ -830,7 +830,7 @@
                                                 $childLang = is_string($child->menu_lang) ? json_decode($child->menu_lang, true) : $child->menu_lang;
                                                 $childNameRu = $childLang['ru'] ?? '';
                                             @endphp
-                                            <li data-id="{{ $child->menu_id }}" data-type="{{ $child->menu_type }}" class="child-menu-level">
+                                            <li data-id="{{ $child->menu_id }}" data-type="{{ $child->menu_type }}" class="child-menu-level bg-light text-dark">
                                                 <div class="menu-item d-flex justify-content-between align-items-start @if($child->active) inactive @endif">
                                                     <i class="{{ $child->menu_icons }} text-info @if(!$child->active) text-danger @endif"></i>
                                                     <span>{{ $childNameRu }}</span>
@@ -850,7 +850,7 @@
                                                                 $subChildLang = is_string($subChild->menu_lang) ? json_decode($subChild->menu_lang, true) : $subChild->menu_lang;
                                                                 $subChildNameRu = $subChildLang['ru'] ?? '';
                                                             @endphp
-                                                            <li data-id="{{ $subChild->menu_id }}" data-type="{{ $subChild->menu_type }}" class="subchild-menu-level">
+                                                            <li data-id="{{ $subChild->menu_id }}" data-type="{{ $subChild->menu_type }}" class="subchild-menu-level bg-light text-dark">
                                                                 <div class="menu-item d-flex justify-content-between align-items-start @if($subChild->active) inactive @endif">
                                                                     <i class="{{ $subChild->menu_icons }} text-success @if(!$subChild->active) text-danger @endif"></i>
                                                                     <span>{{ $subChildNameRu }}</span>
@@ -879,8 +879,8 @@
                 <button id="saveMenuOrder" class="btn btn-success mt-3">Сохранить порядок</button>
             </div>
             <div class="col-md-6">
-                <form id="createMenuForm">
-                    <h2>Создать меню</h2>
+                <form id="createMenuForm" class="bg-light text-dark">
+                    <h2 class="text-dark">Создать меню</h2>
 
                     @csrf
                     <div class="mb-3">
@@ -910,13 +910,13 @@
                     </div>
                     <fieldset class="mb-3">
                         <label class="form-label">Тип меню</label><br>
-                        <div class="form-check form-check-inline custom-radio">
+                        <div class="form-check form-check-inline custom-radio ">
                             <input class="form-check-input menu-type" type="radio" name="menu_type" id="internal" value="internal" checked>
-                            <label class="form-check-label" for="internal">Внутренний</label>
+                            <label class="form-check-label text-dark" for="internal">Внутренний</label>
                         </div>
                         <div class="form-check form-check-inline custom-radio">
                             <input class="form-check-input menu-type" type="radio" name="menu_type" id="external" value="external">
-                            <label class="form-check-label" for="external">Внешний</label>
+                            <label class="form-check-label text-dark" for="external">Внешний</label>
                         </div>
                     </fieldset>
                     <div class="mb-3" id="module-container">
@@ -958,11 +958,11 @@
                         <div class="col-md-7">
                             <div class="form-check form-check-inline custom-radio">
                                 <input class="form-check-input" type="radio" name="active" id="active" value="1" checked>
-                                <label class="form-check-label" for="active">Активный</label>
+                                <label class="form-check-label text-dark" for="active">Активный</label>
                             </div>
                             <div class="form-check form-check-inline custom-radio">
                                 <input class="form-check-input" type="radio" name="active" id="inactive" value="0">
-                                <label class="form-check-label" for="inactive">Неактивный</label>
+                                <label class="form-check-label text-dark" for="inactive">Неактивный</label>
                             </div>
                         </div>
                     </div>
