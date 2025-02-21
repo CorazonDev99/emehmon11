@@ -3,7 +3,6 @@
     <div class="collapse navbar-collapse justify-content-between" id="topnav-menu-content">
         <ul class="navbar-nav">
             @foreach ($menuItems as $item)
-                <!-- Проверяем, есть ли у элемента дочерние элементы -->
                 @php
                     $hasChildren = !empty($item->children);
                 @endphp

@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
-use App\Services\ClickHouseService;
+use App\Http\Helper\AuditHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -44,7 +44,6 @@ class UserController extends Controller
 
         return view('core.users.index', compact('mvd','roles', 'permissions', 'hotels', 'regions', 'userPermissions', 'rolesEdit'));
     }
-
 
     public function getData(Request $request)
     {
@@ -218,7 +217,6 @@ class UserController extends Controller
             }
         }
 
-        // Запись аудита о создании пользователя
         AuditEvent::add(
             'Создание пользователя',
             $userId,
@@ -252,7 +250,6 @@ class UserController extends Controller
                     'active' => 0
                 ];
 
-                // Формируем массив изменений в формате 'old' и 'new'
                 $changes = ['old' => [], 'new' => []];
 
                 foreach ($updateData as $key => $newValue) {
@@ -263,7 +260,6 @@ class UserController extends Controller
                     }
                 }
 
-                // Добавляем доп. данные в "old"
                 $changes['old'] += [
                     'username'   => $user->username,
                     'email'      => $user->email,
@@ -275,11 +271,9 @@ class UserController extends Controller
                 if (!empty($changes['new'])) {
                     DB::table('tb_users')->where('id', $id)->update($updateData);
 
-                    // Логируем аудит
                     AuditEvent::add('Удаление пользователя', $id, 'tb_users', $changes);
                 }
 
-                // Удаляем записи из связанных таблиц
                 DB::table('model_has_roles')->where('model_id', $id)->delete();
                 DB::table('model_has_permissions')->where('model_id', $id)->delete();
 
@@ -381,7 +375,6 @@ class UserController extends Controller
                 AuditEvent::add('update_user', $userId, 'user', $changes);
             }
 
-            // 🔹 Оптимизированная проверка роли
             $oldRole = DB::table('model_has_roles')->where('model_id', $userId)->first();
             if (!$oldRole || $oldRole->role_id != $roleId) {
                 AuditEvent::add('update_user_role', $userId, 'user', [
@@ -396,7 +389,6 @@ class UserController extends Controller
                     ]);
             }
 
-            // 🔹 Оптимизированная проверка разрешений
             $oldPermissions = DB::table('model_has_permissions')
                 ->where('model_id', $userId)
                 ->pluck('permission_id')
@@ -461,117 +453,12 @@ class UserController extends Controller
             ], 400);
         }
 
-        $clickhouse = app(ClickhouseService::class);
-
-        $query = "
-        SELECT
-            event_type,
-            hotel_name,
-            user_name,
-            entity_id,
-            entity_type,
-            event_time,
-            changes
-        FROM emehmon.audit_events
-        WHERE entity_id = :entity_id
-        ORDER BY event_time DESC
-    ";
-
-        try {
-            $auditLogs = $clickhouse->select($query, ['entity_id' => $entity_id]);
-
-            $formattedLogs = array_map(function ($log) {
-                $log['changes'] = $this->formatChanges($log['changes'], $log['event_type']);
-                $log['event_time'] = Carbon::parse($log['event_time'])->format('d.m.Y H:i');
-                return $log;
-            }, $auditLogs);
-
-            return response()->json([
-                'success' => true,
-                'data' => $formattedLogs,
-                'count' => count($formattedLogs),
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('ClickHouse query error: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Ошибка при выполнении запроса к ClickHouse.',
-            ], 500);
-        }
+        $auditLogs = AuditHelper::getAuditLogs($entity_id);
+        return response()->json([
+            'success' => true,
+            'data' => $auditLogs,
+            'count' => count($auditLogs),
+        ]);
     }
-
-
-
-    private function formatChanges(string $changes, string $event_type): string
-    {
-        try {
-            $changesObj = json_decode($changes, true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                \Log::error('Ошибка декодирования JSON', [
-                    'changes' => $changes,
-                    'error' => json_last_error_msg()
-                ]);
-                return 'Ошибка при обработке изменений';
-            }
-
-            if (!is_array($changesObj) || empty($changesObj)) {
-                return 'Изменения не указаны';
-            }
-
-            $messages = [];
-
-            if ($event_type === 'Удаление пользователя') {
-                $username = $changesObj['old']['username'] ?? 'Неизвестный пользователь';
-                $email = $changesObj['old']['email'] ?? 'Нет email';
-
-                $messages[] = "Пользователь **{$username}** ({$email}) был удалён.";
-
-                foreach ($changesObj['old'] as $field => $oldValue) {
-                    if (!in_array($field, ['username', 'email'])) {
-                        $messages[] = "Поле **$field**: '$oldValue'";
-                    }
-                }
-            } elseif ($event_type === 'Создание пользователя') {
-                $username = $changesObj['new']['username'] ?? 'Неизвестный пользователь';
-                $email = $changesObj['new']['email'] ?? 'Нет email';
-
-                $messages[] = "Создан новый пользователь **{$username}** ({$email}).";
-
-                foreach ($changesObj['new'] as $field => $newValue) {
-                    if (!in_array($field, ['username', 'email', 'password'])) {
-                        $messages[] = "Поле **$field**: '$newValue'";
-                    }
-                }
-            } else {
-                foreach ($changesObj['old'] as $field => $oldValue) {
-                    $newValue = $changesObj['new'][$field] ?? null;
-
-                    if (is_array($oldValue) && is_array($newValue)) {
-                        $removed = array_diff($oldValue, $newValue);
-                        $added = array_diff($newValue, $oldValue);
-
-                        if (!empty($removed) || !empty($added)) {
-                            $removedText = !empty($removed) ? "Удалены: " . implode(", ", $removed) : "";
-                            $addedText = !empty($added) ? "Добавлены: " . implode(", ", $added) : "";
-                            $messages[] = "Поле **$field** изменилось: $removedText $addedText";
-                        }
-                    } else {
-                        if ($oldValue != $newValue) {
-                            $messages[] = "Поле **$field** изменилось: '$oldValue' → '$newValue'";
-                        }
-                    }
-                }
-            }
-
-            return !empty($messages) ? implode("\n", $messages) : 'Изменения не указаны';
-        } catch (\Exception $e) {
-            \Log::error('Ошибка при обработке изменений: ' . $e->getMessage(), [
-                'changes' => $changes,
-                'event_type' => $event_type,
-            ]);
-            return 'Ошибка при обработке изменений';
-        }
-    }
-
 
 }

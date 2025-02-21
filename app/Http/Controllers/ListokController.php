@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Helper\AuditHelper;
 use App\Repository\PersonInfo;
 use App\Services\AuditEvent;
 use ClickHouseDB\Client;
@@ -1035,96 +1036,13 @@ class ListokController extends Controller
             ], 400);
         }
 
-        $clickhouse = app(ClickhouseService::class);
+        $auditLogs = AuditHelper::getAuditLogs($entity_id);
 
-        $query = "
-        SELECT
-            event_type,
-            hotel_name,
-            user_name,
-            entity_id,
-            entity_type,
-            event_time,
-            changes
-        FROM emehmon.audit_events
-        WHERE entity_id = :entity_id
-        ORDER BY event_time DESC
-    ";
-
-        try {
-            $auditLogs = $clickhouse->select($query, ['entity_id' => $entity_id]);
-
-            $formattedLogs = array_map(function ($log) {
-                $log['changes'] = $this->formatChanges($log['changes'], $log['event_type']);
-                $log['event_time'] = Carbon::parse($log['event_time'])->format('d.m.Y H:i');
-                return $log;
-            }, $auditLogs);
-
-            return response()->json([
-                'success' => true,
-                'data' => $formattedLogs,
-                'count' => count($formattedLogs),
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('ClickHouse query error: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Ошибка при выполнении запроса к ClickHouse.',
-            ], 500);
-        }
-    }
-
-
-
-    private function formatChanges(string $changes, string $event_type): string
-    {
-        try {
-            $changesObj = json_decode($changes, true);
-            $message = '';
-
-            $paymentStatuses = [
-                0 => 'Не оплачен',
-                1 => 'Оплачен частично',
-                2 => 'Оплачен полностью',
-                3 => 'Не оплачен',
-            ];
-
-            if ($event_type === 'Присвоил тег') {
-                $message = "Присвоил тег {$changesObj['tag']}";
-            }
-
-            if ($event_type === 'Удалить тег') {
-                $message = "Удалено тег {$changesObj['tag']}";
-            }
-
-            if ($event_type === 'Продление визы') {
-                $newDateVisaOn = Carbon::parse($changesObj['new']['dateVisaOn'])->format('d.m.Y H:i');
-                $newDateVisaOff = Carbon::parse($changesObj['new']['dateVisaOff'])->format('d.m.Y H:i');
-                $message = "Продлено виза с {$newDateVisaOn} до {$newDateVisaOff}";
-            }
-
-            if ($event_type === 'Обновление платежа') {
-                $oldPayed = $paymentStatuses[$changesObj['old']['payed']] ?? 'Не оплачено';
-                $newPayed = $paymentStatuses[$changesObj['new']['payed']] ?? 'Не оплачено';
-
-                $oldAmount = $changesObj['old']['amount'] !== null
-                    ? number_format((float)$changesObj['old']['amount'], 2, ',', ' ')
-                    : '0,00';
-                $newAmount = $changesObj['new']['amount'] !== null
-                    ? number_format((float)$changesObj['new']['amount'], 2, ',', ' ')
-                    : '0,00';
-
-                $message = "Платежный статус: {$oldPayed} → {$newPayed}, Сумма: {$oldAmount} → {$newAmount}";
-            }
-
-            return $message ?: 'Изменения не указаны';
-        } catch (\Exception $e) {
-            \Log::error('Ошибка при обработке изменений: ' . $e->getMessage(), [
-                'changes' => $changes,
-                'event_type' => $event_type,
-            ]);
-            return 'Ошибка при обработке изменений';
-        }
+        return response()->json([
+            'success' => true,
+            'data' => $auditLogs,
+            'count' => count($auditLogs),
+        ]);
     }
 
 }

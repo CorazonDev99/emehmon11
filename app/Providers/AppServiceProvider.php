@@ -10,6 +10,7 @@ class AppServiceProvider extends ServiceProvider
 {
     public function boot()
     {
+
         $menuItems = DB::table('tb_menu')
             ->where('active', '1')
             ->orderBy('ordering')

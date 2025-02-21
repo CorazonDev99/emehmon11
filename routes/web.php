@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\ListokController;
-use App\Http\Controllers\TopMenuController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\PrivilegeController;
 use App\Http\Controllers\ProfileController;
@@ -19,8 +18,10 @@ use App\Http\Controllers\Settings\RoomcleanersController;
 use App\Http\Controllers\Settings\RoompricesController;
 use App\Models\User;
 use App\Http\Controllers\BookingController;
+use App\Http\Controllers\AuditController;
 use App\Http\Controllers\EditBookingController;
 use App\Http\Controllers\InfoBookingController;
+use App\Http\Middleware\CheckModeratorOrAdmin;
 
 Route::get('/', function () {
     return view('welcome');
@@ -39,26 +40,11 @@ Route::middleware('auth')->group(function () {
 });
 require __DIR__ . '/auth.php';
 
-Route::auto('users', UserController::class);
 
 Route::get('/listok/identify-qr/{id}', [ListokController::class, 'getIdentifyQr']);
 Route::get('/get-hotels-by-region/{regionId}', [ListokController::class, 'getHotelsByRegion']);
 
 Route::group(['middleware' => ['auth']], function () {
-
-
-    Route::resource('roles', RoleController::class);
-    Route::resource('permissions', PermissionController::class);
-
-    Route::put('/permissions/update/{id}', [UserController::class, 'permission_update'])->name('permissions.update');
-
-    Route::get('/menu', [MenuController::class, 'index'])->name('menu.index');
-    Route::post('/menu/store', [MenuController::class, 'store'])->name('menu.store');
-    Route::post('/menu/update-order', [MenuController::class, 'updateOrder'])->name('menu.updateOrder');
-    Route::auto('menu', MenuController::class);
-
-    Route::post('/menu/update-sidebar-order', [MenuController::class, 'updateSidebarOrder'])->name('menu.updateSidebarOrder');
-
     Route::get('/register', [RegisterController::class, 'index'])->name('register.index');
     Route::get('/register/create', [RegisterController::class, 'create'])->name('register.create');
     Route::post('/register/searchGuest', [RegisterController::class, 'searchGuest'])->name('register.searchGuest');
@@ -66,6 +52,26 @@ Route::group(['middleware' => ['auth']], function () {
     Route::post('/register/deleteSelected', [RegisterController::class, 'deleteSelected'])->name('register.deleteSelected');
     Route::auto('selflistok', SelflistokController::class);
 });
+
+
+
+
+Route::group(['middleware' => ['auth', CheckModeratorOrAdmin::class]], function () {
+    Route::resource('roles', RoleController::class);
+    Route::resource('permissions', PermissionController::class);
+    Route::auto('users', UserController::class);
+    Route::auto('menu', MenuController::class);
+    Route::auto('audit', AuditController::class);
+
+    Route::prefix('menu')->group(function () {
+        Route::get('/', [MenuController::class, 'index'])->name('menu.index');
+        Route::post('/store', [MenuController::class, 'store'])->name('menu.store');
+        Route::post('/update-order', [MenuController::class, 'updateOrder'])->name('menu.updateOrder');
+        Route::post('/update-sidebar-order', [MenuController::class, 'updateSidebarOrder'])->name('menu.updateSidebarOrder');
+    });
+
+});
+
 
 
 Route::post('/listok/move-to-room', [ListokController::class, 'moveToRoom'])->name('listok.move');

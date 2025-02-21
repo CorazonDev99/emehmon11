@@ -2,10 +2,13 @@
 
 namespace App\Http;
 
-class Kernel
+use App\Http\Middleware\CheckModeratorOrAdmin;
+use Illuminate\Foundation\Http\Kernel as HttpKernel;
+
+
+class Kernel extends HttpKernel
 {
     protected $routeMiddleware = [
-        'superuser' => \App\Http\Middleware\SuperUserMiddleware::class,
-        'moderatorOrAdmin' => \App\Http\Middleware\CheckModeratorOrAdmin::class,
+        'moderatorOrAdmin' => CheckModeratorOrAdmin::class,
     ];
 }

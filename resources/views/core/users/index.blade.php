@@ -170,6 +170,15 @@
         transform: translate(-50%, -50%);
     }
 
+    .inactive-user {
+        background-color: #fb989d !important;
+        color: white !important;
+    }
+
+    .deleted-user {
+        background-color: rgba(255, 0, 11, 0.8) !important;
+        color: white !important;
+    }
 </style>
 
 @endsection
@@ -258,17 +267,11 @@
                 ],
                 rowCallback: function(row, data, index) {
                     if (data['active'] === 0 && data['deleted_at'] === null) {
-                        $(row).css({
-                            'background-color': '#fb989d',
-                            'color': 'white'
-                        });
+                        $(row).addClass('inactive-user');
                     }
 
-                    if (data['deleted_at'] && data['deleted_at'] !== null) {
-                        $(row).css({
-                            'background-color': 'rgba(255,0,11,0.8)',
-                            'color': 'white'
-                        });
+                    if (data['deleted_at'] !== null) {
+                        $(row).addClass('deleted-user');
                     }
                 },
 

@@ -220,6 +220,10 @@
                         <i class="uil uil-key-skeleton font-size-18 align-middle text-muted me-1"></i>
                         <span class="align-middle">Permissions</span>
                     </a>
+                    <a class="dropdown-item" href="/audit">
+                        <i class="uil uil-file-search-alt font-size-18 align-middle text-muted me-1"></i>
+                        <span class="align-middle">Audits</span>
+                    </a>
                     @endif
                     <a class="dropdown-item" href="{{ route('logout') }}"
                        onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
