@@ -17,6 +17,8 @@ use App\Http\Controllers\Settings\HotelImagesController;
 use App\Http\Controllers\Settings\RoomcleanersController;
 use App\Http\Controllers\Settings\RoompricesController;
 use App\Models\User;
+use App\Http\Controllers\ReportAllController;
+use App\Http\Controllers\FindGuestController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\AuditController;
 use App\Http\Controllers\EditBookingController;
@@ -52,8 +54,9 @@ Route::group(['middleware' => ['auth']], function () {
     Route::post('/register/deleteSelected', [RegisterController::class, 'deleteSelected'])->name('register.deleteSelected');
     Route::auto('selflistok', SelflistokController::class);
 });
-
-
+Route::post('/get-report-data', [ReportAllController::class, 'getReportAll']);
+Route::auto('reportall', ReportAllController::class);
+Route::auto('find-guest', FindGuestController::class);
 
 
 Route::group(['middleware' => ['auth', CheckModeratorOrAdmin::class]], function () {

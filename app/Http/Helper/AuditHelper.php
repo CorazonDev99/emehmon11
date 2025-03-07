@@ -2,9 +2,9 @@
 
 namespace App\Http\Helper;
 
-use Carbon\Carbon;
-use App\Services\ClickhouseService;
 use App\Services\AuditEvent;
+use App\Services\ClickhouseService;
+use Carbon\Carbon;
 
 class AuditHelper
 {

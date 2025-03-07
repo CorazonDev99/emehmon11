@@ -5,9 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Helper\AuditHelper;
 use App\Repository\PersonInfo;
 use App\Services\AuditEvent;
-use ClickHouseDB\Client;
-use App\Services\ClickhouseService;
 use Carbon\Carbon;
+use ClickHouseDB\Client;
 use Illuminate\Http\Request;
 use Yajra\DataTables\DataTables;
 

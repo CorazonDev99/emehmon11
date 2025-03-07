@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 use App\Http\Helper\AuditHelper;
+use App\Services\AuditEvent;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use App\Services\AuditEvent;
 use Yajra\DataTables\DataTables;
-use Carbon\Carbon;
 
 
 class UserController extends Controller
@@ -192,6 +192,7 @@ class UserController extends Controller
             'password' => $hashedPassword,
             'avatar' => $avatarPath,
             'mrz_code' => $mrzCode,
+            'active' => 1,
             'created_at' => now(),
             'updated_at' => now(),
         ];
@@ -312,6 +313,7 @@ class UserController extends Controller
             $avatar = $request->file('avatar');
             $hotelId = $request->input('id_hotel');
             $mrzCode = $request->input('mrz_code');
+            $active = $request->input('active');
             $createdBy = auth()->user()->id;
             $permissions = json_decode($request->input('permissions'), true);
 
@@ -358,6 +360,7 @@ class UserController extends Controller
                 'id_hotel' => $hotelId,
                 'mrz_code' => $mrzCode,
                 'avatar' => $avatarPath,
+                'active' => $active,
                 'password' => $password ? bcrypt($password) : $oldUser->password,
             ];
 
